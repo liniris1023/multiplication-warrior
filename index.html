@@ -1,0 +1,1855 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>乘法小勇士 - Q版動物冒險闖關</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Font: 圓潤可愛字體 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700;800&family=Noto+Sans+TC:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --sky-blue: #7cd5ff;
+            --candy-pink: #ff85b3;
+            --candy-yellow: #ffd33d;
+            --candy-green: #5ee49f;
+            --candy-purple: #c084fc;
+        }
+
+        body {
+            font-family: 'Fredoka', 'Noto Sans TC', sans-serif;
+            background: linear-gradient(180deg, #74cbf5 0%, #b3e7ff 50%, #e6f7ff 100%);
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* 3D 立體糖果遊戲按鈕 */
+        .btn-candy {
+            transition: all 0.08s ease;
+            position: relative;
+            box-shadow: 0 7px 0 0 rgba(0, 0, 0, 0.22), 0 10px 15px -3px rgba(0, 0, 0, 0.15);
+            transform: translateY(0);
+        }
+        .btn-candy:active, .btn-candy.btn-pressed {
+            transform: translateY(6px) !important;
+            box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* 糖果色塊積木紋理 */
+        .candy-tile-grid {
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(255,255,255,0.4) 20%, transparent 20%),
+                linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.15) 75%);
+            background-size: 40px 40px, 80px 80px;
+        }
+
+        /* 經典問號黃金磚塊 */
+        .block-question {
+            background: linear-gradient(135deg, #ffd700 0%, #f59e0b 100%);
+            border: 4px solid #b45309;
+            box-shadow: 0 6px 0 #78350f, inset 2px 2px 0 rgba(255,255,255,0.6);
+            animation: pulseBlock 2s infinite ease-in-out;
+        }
+
+        @keyframes pulseBlock {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-4px) scale(1.02); }
+        }
+
+        /* 浮動雲朵飄過背景 */
+        @keyframes cloudFloat {
+            0% { transform: translateX(-10%); }
+            50% { transform: translateX(10%); }
+            100% { transform: translateX(-10%); }
+        }
+        .animate-cloud-float {
+            animation: cloudFloat 20s ease-in-out infinite;
+        }
+
+        /* 角色生動動畫 */
+        @keyframes charBob {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-8px) rotate(2deg); }
+        }
+        .animate-char-bob {
+            animation: charBob 1.8s ease-in-out infinite;
+        }
+
+        @keyframes charJump {
+            0% { transform: translateY(0) scale(1); }
+            40% { transform: translateY(-70px) scale(1.1); }
+            70% { transform: translateY(0) scale(0.95); }
+            100% { transform: translateY(0) scale(1); }
+        }
+        .animate-char-jump {
+            animation: charJump 0.65s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+        }
+
+        @keyframes bounceGlow {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(255,215,0,0.7)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 16px rgba(255,215,0,1)); }
+        }
+        .animate-bounce-glow {
+            animation: bounceGlow 1.2s infinite ease-in-out;
+        }
+
+        /* 直式計算網格 */
+        .math-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(44px, 64px));
+            gap: 6px;
+            justify-content: center;
+        }
+
+        .math-cell {
+            width: 100%;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            font-weight: 800;
+            border-radius: 14px;
+            position: relative;
+        }
+
+        /* 輸入格子狀態 */
+        .input-cell {
+            background-color: #ffffff;
+            border: 3px dashed #cbd5e1;
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+        }
+
+        .input-cell.active {
+            border: 4px solid #3b82f6;
+            background-color: #eff6ff;
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6), inset 0 0 10px rgba(191, 219, 254, 0.6);
+            transform: scale(1.08);
+            z-index: 20;
+            animation: pulseGlow 1.4s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            from { box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+            to { box-shadow: 0 0 24px rgba(59, 130, 246, 0.9), 0 0 6px rgba(255, 255, 255, 0.8); }
+        }
+
+        .input-cell.error {
+            border: 4px solid #ef4444;
+            background-color: #fef2f2;
+            animation: shake 0.4s;
+        }
+
+        .input-cell.filled {
+            border: 3px solid #60a5fa;
+            background-color: #f0f9ff;
+            color: #1d4ed8;
+        }
+
+        /* 十位定位專屬導引目標樣式 */
+        .input-cell.position-target {
+            border: 4px solid #f59e0b !important;
+            background-color: #fef3c7 !important;
+            box-shadow: 0 0 22px #fbbf24 !important;
+            transform: scale(1.12);
+            z-index: 25;
+            animation: pulseGlowYellow 1s infinite alternate;
+        }
+
+        @keyframes pulseGlowYellow {
+            from { box-shadow: 0 0 10px #f59e0b; }
+            to { box-shadow: 0 0 26px #fbbf24, 0 0 8px #fff; }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20% { transform: translateX(-8px); }
+            40% { transform: translateX(8px); }
+            60% { transform: translateX(-6px); }
+            80% { transform: translateX(6px); }
+        }
+
+        /* 乘數/被乘數聚焦提示光暈 */
+        .factor-hl-bottom {
+            background-color: #fef08a !important;
+            color: #854d0e !important;
+            border-radius: 12px;
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.6);
+            transform: scale(1.05);
+        }
+        .factor-hl-top {
+            background-color: #bbf7d0 !important;
+            color: #166534 !important;
+            border-radius: 12px;
+            box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+            transform: scale(1.05);
+        }
+
+        /* 自定義捲軸 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #93c5fd; border-radius: 6px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // 四大 Q 版動物主角定義（根據上傳圖片）
+        const CHARACTERS = [
+            {
+                id: 'fox',
+                name: '狐小瑪 (Foxie)',
+                title: '聰明狐狸冒險家 🦊',
+                roleDesc: '戴紅帽配藍吊帶褲的小狐狸',
+                color: '#EA580C',
+                borderColor: 'border-orange-500',
+                accentBg: 'bg-orange-100',
+                buttonBg: 'bg-gradient-to-b from-orange-400 to-orange-500',
+                btnBorder: 'border-orange-700',
+                greeting: '看我神機妙算！狐小瑪陪你一起算乘法！🦊',
+                winMsg: '太強啦！你簡直是乘法大天才！🎉',
+                hintMsg: '別急別急，狐狸耳朵動一動，看看提示吧！💡',
+                avatarIcon: '🦊',
+                bannerHat: '紅帽子'
+            },
+            {
+                id: 'bunny',
+                name: '兔路易 (Bunny)',
+                title: '敏捷兔兔探險家 🐰',
+                roleDesc: '戴綠帽 L 標誌的活潑長耳兔',
+                color: '#16A34A',
+                borderColor: 'border-green-500',
+                accentBg: 'bg-green-100',
+                buttonBg: 'bg-gradient-to-b from-green-400 to-green-500',
+                btnBorder: 'border-green-700',
+                greeting: '蹦蹦跳跳！十位相乘記得要往左跳一格喔！🐰',
+                winMsg: '哇塞！一躍過關，真是太敏捷了！⭐',
+                hintMsg: '慢慢來，像小兔子一樣細心前進～🌱',
+                avatarIcon: '🐰',
+                bannerHat: '綠帽子'
+            },
+            {
+                id: 'kitty',
+                name: '貓咪公主 (Princess Kitty)',
+                title: '甜心貓咪公主 🐱',
+                roleDesc: '戴著小皇冠穿粉紅禮服的萌貓咪',
+                color: '#DB2777',
+                borderColor: 'border-pink-500',
+                accentBg: 'bg-pink-100',
+                buttonBg: 'bg-gradient-to-b from-pink-400 to-pink-500',
+                btnBorder: 'border-pink-700',
+                greeting: '喵～我們一起優雅地解開每一道乘法題目！💖',
+                winMsg: '好棒呀！公主為你獻上最高榮耀的愛心！👑',
+                hintMsg: '進位放在手上慢慢算，一定沒問題的喵～🐾',
+                avatarIcon: '🐱',
+                bannerHat: '金皇冠'
+            },
+            {
+                id: 'mario',
+                name: '萌萌小勇士 (Chibi Mario)',
+                title: '熱血小隊長 🍄',
+                roleDesc: '招牌紅帽大鬍子圓滾滾勇士',
+                color: '#DC2626',
+                borderColor: 'border-red-500',
+                accentBg: 'bg-red-100',
+                buttonBg: 'bg-gradient-to-b from-red-500 to-red-600',
+                btnBorder: 'border-red-800',
+                greeting: 'Let\'s Go！乘法世界大冒險，衝啊！🔥',
+                winMsg: 'Mission Complete！你打倒乘法大魔王了！🏆',
+                hintMsg: '加把勁！超級小勇士絕不放棄！💪',
+                avatarIcon: '🍄',
+                bannerHat: '經典紅帽'
+            }
+        ];
+
+        const BASIC_QUESTIONS = [
+            { id: 'b1', n1: 12, n2: 13 },
+            { id: 'b2', n1: 21, n2: 14 },
+            { id: 'b3', n1: 23, n2: 12 },
+            { id: 'b4', n1: 34, n2: 12 },
+            { id: 'b5', n1: 42, n2: 21 },
+            { id: 'b6', n1: 31, n2: 23 }
+        ];
+
+        const ADV_QUESTIONS = [
+            { id: 'a1', n1: 27, n2: 14 },
+            { id: 'a2', n1: 36, n2: 25 },
+            { id: 'a3', n1: 48, n2: 32 },
+            { id: 'a4', n1: 59, n2: 43 },
+            { id: 'a5', n1: 67, n2: 56 },
+            { id: 'a6', n1: 84, n2: 79 }
+        ];
+
+        // 音效引擎
+        const SoundManager = {
+            synth: null,
+            init() {
+                if (!this.synth) {
+                    this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    this.synth.volume.value = -7;
+                }
+            },
+            play(type) {
+                try {
+                    if (Tone.context.state !== 'running') Tone.start();
+                    this.init();
+                    const now = Tone.now();
+                    if (type === 'correct') {
+                        this.synth.triggerAttackRelease(["E5", "G5"], "8n", now);
+                    } else if (type === 'wrong') {
+                        this.synth.triggerAttackRelease("C3", "8n", now);
+                    } else if (type === 'phase') {
+                        this.synth.triggerAttackRelease(["C4", "E4", "G4", "B4"], "6n", now);
+                    } else if (type === 'tap') {
+                        this.synth.triggerAttackRelease("F5", "16n", now);
+                    } else if (type === 'win') {
+                        this.synth.triggerAttackRelease("C5", "8n", now);
+                        this.synth.triggerAttackRelease("E5", "8n", now + 0.12);
+                        this.synth.triggerAttackRelease("G5", "8n", now + 0.24);
+                        this.synth.triggerAttackRelease("C6", "4n", now + 0.38);
+                    }
+                } catch (e) {
+                    console.warn("Audio context not ready yet.");
+                }
+            }
+        };
+
+        // 建立新學生資料
+        const createNewStudent = (name, chosenChar = 'fox') => ({
+            name,
+            characterId: chosenChar,
+            stars: 0,
+            coins: 0,
+            basicCompleted: 0,
+            advCompleted: 0,
+            lastPlayed: new Date().toLocaleDateString(),
+            errors: {
+                calc: 0,
+                carry: 0,
+                position: 0,
+                shift: 0
+            },
+            hintsUsed: 0,
+            completedLevels: {
+                basic: [],
+                adv: []
+            }
+        });
+
+        function App() {
+            // View Routing: 'home', 'teacher', 'student-login', 'student-hub', 'map', 'animation', 'game'
+            const [view, setView] = useState('home');
+            
+            // Global State
+            const [studentsData, setStudentsData] = useState([]);
+            const [currentUser, setCurrentUser] = useState(null);
+            
+            // Game State
+            const [gameMode, setGameMode] = useState('basic'); // 'basic' | 'adv'
+            const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+
+            // Load/Save to LocalStorage
+            useEffect(() => {
+                const saved = localStorage.getItem('mathGameData_v2');
+                if (saved) {
+                    setStudentsData(JSON.parse(saved));
+                } else {
+                    // 相容舊版資料
+                    const legacy = localStorage.getItem('mathGameData');
+                    if (legacy) {
+                        const parsed = JSON.parse(legacy);
+                        const upgraded = parsed.map(s => ({ ...s, characterId: s.characterId || 'fox' }));
+                        setStudentsData(upgraded);
+                    }
+                }
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('mathGameData_v2', JSON.stringify(studentsData));
+            }, [studentsData]);
+
+            const handleStudentLogin = (name, charId) => {
+                let user = studentsData.find(s => s.name === name);
+                if (!user) {
+                    user = createNewStudent(name, charId);
+                    setStudentsData([...studentsData, user]);
+                } else {
+                    const updated = { 
+                        ...user, 
+                        characterId: charId || user.characterId || 'fox',
+                        lastPlayed: new Date().toLocaleDateString() 
+                    };
+                    setStudentsData(studentsData.map(s => s.name === name ? updated : s));
+                    user = updated;
+                }
+                setCurrentUser(user.name);
+                setView('student-hub');
+            };
+
+            const updateUserData = (updater) => {
+                setStudentsData(prev => prev.map(s => {
+                    if (s.name === currentUser) {
+                        return updater(s);
+                    }
+                    return s;
+                }));
+            };
+
+            const currentStudentObj = studentsData.find(s => s.name === currentUser);
+            const activeChar = CHARACTERS.find(c => c.id === (currentStudentObj?.characterId || 'fox')) || CHARACTERS[0];
+
+            return (
+                <div className="min-h-screen relative pb-10 select-none">
+                    {/* 可愛雲朵飄移背景 */}
+                    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-60">
+                        <div className="absolute top-10 left-10 text-7xl text-white drop-shadow animate-cloud-float opacity-80">☁️</div>
+                        <div className="absolute top-28 right-16 text-6xl text-white drop-shadow animate-cloud-float opacity-70" style={{animationDelay: '-8s'}}>☁️</div>
+                        <div className="absolute top-72 left-1/4 text-5xl text-white drop-shadow animate-cloud-float opacity-60" style={{animationDelay: '-14s'}}>☁️</div>
+                        <div className="absolute top-8 left-1/2 -translate-x-1/2 text-8xl text-amber-200 opacity-40 animate-pulse">☀️</div>
+                    </div>
+
+                    {/* 頂部導覽列 */}
+                    {view !== 'home' && view !== 'student-login' && view !== 'animation' && (
+                        <header className="px-4 py-3 bg-white/85 backdrop-blur-md shadow-md sticky top-0 z-50 border-b-4 border-sky-200">
+                            <div className="max-w-4xl mx-auto flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                    <span className="text-3xl">{activeChar.avatarIcon}</span>
+                                    <div>
+                                        <h1 className="text-xl font-black text-slate-800 tracking-wide flex items-center gap-2">
+                                            <span>乘法小勇士</span>
+                                            <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full border border-amber-300 font-bold">
+                                                Q版冒險
+                                            </span>
+                                        </h1>
+                                        {currentStudentObj && (
+                                            <p className="text-xs font-bold text-slate-500">
+                                                小勇士：<span className="text-blue-600">{currentStudentObj.name}</span> | 夥伴：{activeChar.name}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setView('home')} 
+                                    className="btn-candy px-4 py-2 bg-slate-100 hover:bg-slate-200 border-2 border-slate-300 rounded-2xl font-black text-slate-700 text-sm flex items-center gap-1.5"
+                                >
+                                    <i className="fa-solid fa-house"></i> 回首頁
+                                </button>
+                            </div>
+                        </header>
+                    )}
+
+                    {/* 主視圖渲染 */}
+                    <main className="max-w-4xl mx-auto pt-5 px-4 relative z-10">
+                        {view === 'home' && <HomeView setView={setView} />}
+                        {view === 'teacher' && <TeacherView data={studentsData} setStudentsData={setStudentsData} />}
+                        {view === 'student-login' && <StudentLogin onLogin={handleStudentLogin} setView={setView} />}
+                        {view === 'student-hub' && (
+                            <StudentHub 
+                                user={currentStudentObj} 
+                                activeChar={activeChar}
+                                updateUserData={updateUserData}
+                                setView={setView} 
+                                setGameMode={setGameMode}
+                            />
+                        )}
+                        {view === 'map' && (
+                            <MapView 
+                                user={currentStudentObj} 
+                                activeChar={activeChar}
+                                mode={gameMode} 
+                                setView={setView}
+                                setCurrentQuestionIdx={setCurrentQuestionIdx}
+                            />
+                        )}
+                        {view === 'animation' && (
+                            <AnimationView 
+                                activeChar={activeChar}
+                                mode={gameMode} 
+                                idx={currentQuestionIdx} 
+                                onComplete={() => setView('game')} 
+                            />
+                        )}
+                        {view === 'game' && (
+                            <MathGameView 
+                                user={currentStudentObj}
+                                activeChar={activeChar}
+                                mode={gameMode}
+                                idx={currentQuestionIdx}
+                                updateUserData={updateUserData}
+                                onFinish={() => setView('map')}
+                            />
+                        )}
+                    </main>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 1. 首頁 (HomeView) - 導入上傳圖片風格大圖
+        // ==========================================
+        function HomeView({ setView }) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[85vh] gap-6 py-4">
+                    {/* 主視覺大橫幅 (Super Cute Animal Adventure) */}
+                    <div className="w-full max-w-2xl bg-white rounded-3xl p-3 shadow-2xl border-4 border-amber-300 relative overflow-hidden group">
+                        <div className="relative rounded-2xl overflow-hidden border-2 border-slate-100 shadow-inner">
+                            <img 
+                                src="images/banner_adventure.jpg" 
+                                alt="Super Cute Animal Adventure!" 
+                                className="w-full h-auto object-cover transform group-hover:scale-105 transition-transform duration-700"
+                                onError={(e) => {
+                                    // 容錯備用展示
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                }}
+                            />
+                            <div className="hidden h-64 bg-gradient-to-r from-sky-400 via-pink-300 to-yellow-300 flex-col items-center justify-center text-white">
+                                <span className="text-6xl mb-2">🦊🐰🐱🍄</span>
+                                <h2 className="text-3xl font-black drop-shadow">SUPER CUTE ANIMAL ADVENTURE!</h2>
+                            </div>
+                        </div>
+                        
+                        {/* 糖果標題標籤 */}
+                        <div className="mt-3 flex flex-wrap justify-between items-center px-2">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl animate-bounce">⭐</span>
+                                <span className="text-lg font-black text-slate-800 tracking-wide">
+                                    Q版動物直式乘法大冒險
+                                </span>
+                            </div>
+                            <span className="bg-amber-400 text-amber-950 font-black text-xs px-3 py-1 rounded-full shadow-sm">
+                                專為小學與特教學習設計
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* 入口選擇卡片 */}
+                    <div className="flex flex-col sm:flex-row gap-5 w-full max-w-2xl px-2">
+                        {/* 學生闖關按鈕 */}
+                        <button 
+                            onClick={() => setView('student-login')}
+                            className="btn-candy flex-1 bg-gradient-to-b from-emerald-400 to-green-500 border-b-8 border-green-700 text-white rounded-3xl p-6 flex flex-col items-center gap-3 group"
+                        >
+                            <div className="w-20 h-20 bg-white/25 rounded-2xl flex items-center justify-center text-5xl group-hover:scale-110 group-hover:rotate-6 transition-transform shadow-inner">
+                                🎮
+                            </div>
+                            <div className="text-center">
+                                <span className="text-3xl font-black block tracking-wider drop-shadow-sm">學生闖關</span>
+                                <span className="text-xs font-bold text-emerald-100 mt-1 block">
+                                    挑選萌寵夥伴・挑戰關卡 🚀
+                                </span>
+                            </div>
+                            <span className="text-sm font-black bg-white text-green-700 px-5 py-1.5 rounded-full shadow-md mt-1 group-hover:bg-yellow-300 transition-colors">
+                                立刻開始！
+                            </span>
+                        </button>
+                        
+                        {/* 老師管理按鈕 */}
+                        <button 
+                            onClick={() => setView('teacher')}
+                            className="btn-candy flex-1 bg-gradient-to-b from-purple-500 to-indigo-600 border-b-8 border-purple-800 text-white rounded-3xl p-6 flex flex-col items-center gap-3 group"
+                        >
+                            <div className="w-20 h-20 bg-white/25 rounded-2xl flex items-center justify-center text-5xl group-hover:scale-110 group-hover:-rotate-6 transition-transform shadow-inner">
+                                📊
+                            </div>
+                            <div className="text-center">
+                                <span className="text-3xl font-black block tracking-wider drop-shadow-sm">老師後台</span>
+                                <span className="text-xs font-bold text-purple-200 mt-1 block">
+                                    錯誤診斷・學習分析・QR Code 📱
+                                </span>
+                            </div>
+                            <span className="text-sm font-black bg-white text-purple-800 px-5 py-1.5 rounded-full shadow-md mt-1 group-hover:bg-yellow-300 transition-colors">
+                                進入管理
+                            </span>
+                        </button>
+                    </div>
+
+                    {/* 夥伴問候走馬燈 */}
+                    <div className="bg-white/80 backdrop-blur-sm border-2 border-sky-300 rounded-full px-6 py-2 flex items-center gap-3 text-slate-700 text-sm font-bold shadow-sm">
+                        <span className="text-xl">🦊</span>
+                        <span>狐小瑪、🐰兔路易、🐱貓咪公主、🍄小勇士 已就緒，等你一起來闖關！</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 2. 學生登入與角色選擇 (StudentLogin)
+        // ==========================================
+        function StudentLogin({ onLogin, setView }) {
+            const [name, setName] = useState('');
+            const [selectedChar, setSelectedChar] = useState('fox');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (name.trim()) {
+                    onLogin(name.trim(), selectedChar);
+                }
+            };
+
+            const currentCharObj = CHARACTERS.find(c => c.id === selectedChar);
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[78vh] py-4">
+                    <div className="bg-white p-7 sm:p-9 rounded-3xl shadow-2xl w-full max-w-lg text-center border-4 border-sky-300 relative">
+                        {/* 頂部問候 */}
+                        <div className="text-6xl mb-3 animate-char-bob inline-block">
+                            {currentCharObj.avatarIcon}
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-1">
+                            歡迎來到乘法冒險島！
+                        </h2>
+                        <p className="text-sm font-bold text-slate-500 mb-6">
+                            輸入姓名並挑選你最喜歡的冒險小夥伴吧！
+                        </p>
+
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                            {/* 姓名輸入 */}
+                            <div className="text-left bg-slate-50 p-4 rounded-2xl border-2 border-slate-200">
+                                <label className="block text-slate-700 font-black mb-2 text-base flex items-center gap-2">
+                                    <i className="fa-solid fa-signature text-blue-500"></i>
+                                    【請輸入你的姓名】
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full p-3.5 text-2xl border-4 border-sky-200 rounded-xl focus:border-blue-500 focus:outline-none font-black text-center text-slate-800 bg-white"
+                                    placeholder="例如：林小明"
+                                    autoFocus
+                                />
+                            </div>
+
+                            {/* 夥伴選擇區 (四位動物角色) */}
+                            <div className="text-left">
+                                <label className="block text-slate-700 font-black mb-2 text-base flex items-center gap-2">
+                                    <i className="fa-solid fa-paw text-amber-500"></i>
+                                    【挑選你的冒險夥伴】
+                                </label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {CHARACTERS.map(c => {
+                                        const isSelected = selectedChar === c.id;
+                                        return (
+                                            <button
+                                                type="button"
+                                                key={c.id}
+                                                onClick={() => {
+                                                    setSelectedChar(c.id);
+                                                    SoundManager.play('tap');
+                                                }}
+                                                className={`p-3 rounded-2xl border-3 text-left transition-all flex items-center gap-3 ${
+                                                    isSelected 
+                                                        ? 'bg-amber-100 border-amber-500 ring-4 ring-amber-200 scale-102 shadow-md' 
+                                                        : 'bg-white border-slate-200 hover:border-sky-300'
+                                                }`}
+                                            >
+                                                <span className="text-4xl">{c.avatarIcon}</span>
+                                                <div>
+                                                    <div className="font-black text-slate-800 text-sm">{c.name}</div>
+                                                    <div className="text-xs text-slate-500 font-bold">{c.title.split(' ')[0]}</div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* 角色即時小問候語 */}
+                            <div className="bg-amber-50 border-2 border-amber-200 p-3 rounded-xl text-xs font-bold text-amber-900 flex items-center gap-2">
+                                <span className="text-lg">💬</span>
+                                <span>{currentCharObj.greeting}</span>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                disabled={!name.trim()}
+                                className={`btn-candy p-4 rounded-2xl text-2xl font-black text-white transition-all ${
+                                    name.trim() 
+                                        ? `${currentCharObj.buttonBg} border-b-6 ${currentCharObj.btnBorder}` 
+                                        : 'bg-slate-300 border-b-6 border-slate-400 cursor-not-allowed'
+                                }`}
+                            >
+                                出發闖關 🚀
+                            </button>
+                        </form>
+
+                        <button 
+                            onClick={() => setView('home')} 
+                            className="mt-5 text-slate-400 font-bold hover:text-slate-600 underline text-sm"
+                        >
+                            返回首頁
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 3. 學生大廳 (StudentHub)
+        // ==========================================
+        function StudentHub({ user, activeChar, updateUserData, setView, setGameMode }) {
+            if (!user) return null;
+
+            return (
+                <div className="max-w-3xl mx-auto flex flex-col gap-6">
+                    {/* 學生個人檔案卡片 */}
+                    <div className="bg-white rounded-3xl p-6 shadow-xl border-4 border-amber-300 flex flex-wrap justify-between items-center gap-4 relative overflow-hidden">
+                        {/* 糖果背景小彩飾 */}
+                        <div className="absolute top-0 right-0 p-4 opacity-10 text-9xl pointer-events-none">⭐</div>
+
+                        <div className="flex items-center gap-4 z-10">
+                            <div className="w-20 h-20 rounded-2xl bg-amber-100 border-4 border-amber-400 flex items-center justify-center text-5xl shadow-md animate-char-bob">
+                                {activeChar.avatarIcon}
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-3xl font-black text-slate-800">{user.name}</h2>
+                                    <span className="bg-sky-100 text-sky-800 text-xs font-black px-2.5 py-1 rounded-full border border-sky-300">
+                                        夥伴：{activeChar.name}
+                                    </span>
+                                </div>
+                                <p className="text-xs font-bold text-slate-500 mt-1">
+                                    {activeChar.greeting}
+                                </p>
+                                <button 
+                                    onClick={() => setView('student-login')} 
+                                    className="text-xs text-blue-500 font-bold hover:underline mt-1.5 flex items-center gap-1"
+                                >
+                                    <i className="fa-solid fa-arrows-rotate"></i> 切換夥伴或更換姓名
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 獎勵勳章與統計 */}
+                        <div className="flex gap-3 z-10">
+                            <div className="bg-yellow-50 border-2 border-yellow-400 text-yellow-800 px-4 py-2 rounded-2xl font-black flex items-center gap-2 shadow-sm text-lg">
+                                <span>⭐</span> {user.stars}
+                            </div>
+                            <div className="bg-orange-50 border-2 border-orange-400 text-orange-800 px-4 py-2 rounded-2xl font-black flex items-center gap-2 shadow-sm text-lg">
+                                <span>🪙</span> {user.coins}
+                            </div>
+                            <div className="bg-blue-50 border-2 border-blue-400 text-blue-800 px-4 py-2 rounded-2xl font-black flex items-center gap-2 shadow-sm text-lg">
+                                <span>🏆</span> {user.basicCompleted + user.advCompleted}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 兩大模式選擇卡片 (馬卡龍色系) */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                        {/* 基礎冒險 */}
+                        <button 
+                            onClick={() => { setGameMode('basic'); setView('map'); SoundManager.play('tap'); }}
+                            className="btn-candy bg-gradient-to-b from-sky-400 to-blue-500 border-b-8 border-blue-700 rounded-3xl p-7 flex flex-col items-center gap-3 relative overflow-hidden group text-white text-center"
+                        >
+                            <div className="absolute top-2 right-2 text-7xl opacity-20 group-hover:rotate-12 transition-transform">🍄</div>
+                            <div className="text-6xl z-10 group-hover:scale-110 transition-transform">
+                                🍄
+                            </div>
+                            <h3 className="text-3xl font-black z-10 tracking-wide">基礎冒險</h3>
+                            <div className="bg-blue-900/30 px-4 py-1.5 rounded-full text-white font-bold text-xs z-10">
+                                簡單進位 / 乘法直式對齊練習
+                            </div>
+                            <div className="w-full bg-black/25 h-4 rounded-full mt-2 overflow-hidden z-10 p-0.5">
+                                <div className="bg-yellow-400 h-full rounded-full transition-all duration-500" style={{width: `${(user.basicCompleted/6)*100}%`}}></div>
+                            </div>
+                            <span className="text-sky-100 font-black text-sm z-10">
+                                已完成 {user.basicCompleted} / 6 關卡
+                            </span>
+                        </button>
+
+                        {/* 進階挑戰 */}
+                        <button 
+                            onClick={() => { setGameMode('adv'); setView('map'); SoundManager.play('tap'); }}
+                            className="btn-candy bg-gradient-to-b from-rose-400 to-pink-500 border-b-8 border-rose-700 rounded-3xl p-7 flex flex-col items-center gap-3 relative overflow-hidden group text-white text-center"
+                        >
+                            <div className="absolute top-2 right-2 text-7xl opacity-20 group-hover:scale-125 transition-transform">⭐</div>
+                            <div className="text-6xl z-10 group-hover:scale-110 transition-transform">
+                                ⭐
+                            </div>
+                            <h3 className="text-3xl font-black z-10 tracking-wide">進階挑戰</h3>
+                            <div className="bg-rose-900/30 px-4 py-1.5 rounded-full text-white font-bold text-xs z-10">
+                                多次進位 / 完整二位數相乘直式
+                            </div>
+                            <div className="w-full bg-black/25 h-4 rounded-full mt-2 overflow-hidden z-10 p-0.5">
+                                <div className="bg-yellow-400 h-full rounded-full transition-all duration-500" style={{width: `${(user.advCompleted/6)*100}%`}}></div>
+                            </div>
+                            <span className="text-rose-100 font-black text-sm z-10">
+                                已完成 {user.advCompleted} / 6 關卡
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 4. 地圖模式 (MapView) - 馬卡龍糖果色塊步道
+        // ==========================================
+        function MapView({ user, activeChar, mode, setView, setCurrentQuestionIdx }) {
+            const isBasic = mode === 'basic';
+            const questions = isBasic ? BASIC_QUESTIONS : ADV_QUESTIONS;
+            const completedList = isBasic ? user.completedLevels.basic : user.completedLevels.adv;
+            const isAllCompleted = completedList.length === 6;
+
+            const handleNodeClick = (idx) => {
+                SoundManager.play('tap');
+                setCurrentQuestionIdx(idx);
+                setView('animation');
+            };
+
+            return (
+                <div className="max-w-4xl mx-auto flex flex-col items-center relative">
+                    {/* 地圖標題列 */}
+                    <div className="w-full flex justify-between items-center mb-5 bg-white/90 p-4 rounded-2xl shadow-sm border-2 border-amber-300">
+                        <button 
+                            onClick={() => setView('student-hub')} 
+                            className="btn-candy text-base font-black text-slate-700 bg-slate-100 px-4 py-2 rounded-xl hover:text-blue-600 border border-slate-300"
+                        >
+                            <i className="fa-solid fa-arrow-left mr-1"></i> 回大廳
+                        </button>
+                        <h2 className="text-2xl font-black text-slate-800 flex items-center gap-2">
+                            <span>{isBasic ? '🍄 基礎冒險地圖' : '⭐ 進階挑戰地圖'}</span>
+                        </h2>
+                        <div className="bg-amber-100 border border-amber-400 text-amber-900 font-black text-sm px-3 py-1.5 rounded-full">
+                            進度：{completedList.length} / 6
+                        </div>
+                    </div>
+
+                    {/* 彩色糖果步道地圖畫布 (如同上傳圖片地磚) */}
+                    <div className="relative w-full max-w-2xl aspect-[4/3] rounded-3xl border-8 border-amber-400 shadow-2xl p-6 overflow-hidden candy-tile-grid bg-gradient-to-b from-sky-300 via-emerald-200 to-amber-100">
+                        {/* 兩側裝飾蘑菇屋 🍄 與雲朵 */}
+                        <div className="absolute top-4 left-6 text-5xl opacity-90 drop-shadow animate-bounce" style={{animationDuration: '3s'}}>
+                            🍄
+                        </div>
+                        <div className="absolute bottom-6 right-8 text-5xl opacity-90 drop-shadow animate-bounce" style={{animationDuration: '2.5s'}}>
+                            🍄
+                        </div>
+                        <div className="absolute top-1/2 left-4 text-4xl opacity-80">
+                            ❓
+                        </div>
+                        <div className="absolute top-16 right-1/4 text-4xl opacity-80">
+                            🪙
+                        </div>
+
+                        {/* S型彩色馬卡龍糖果磚步道 (SVG) */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <path 
+                                d="M 18,82 C 20,55 45,65 52,48 C 58,32 75,30 80,18" 
+                                fill="none" 
+                                stroke="#fde047" 
+                                strokeWidth="12" 
+                                strokeLinecap="round" 
+                            />
+                            <path 
+                                d="M 18,82 C 20,55 45,65 52,48 C 58,32 75,30 80,18" 
+                                fill="none" 
+                                stroke="#f59e0b" 
+                                strokeWidth="12" 
+                                strokeLinecap="round" 
+                                strokeDasharray="3 4" 
+                            />
+                        </svg>
+
+                        {/* 關卡節點 */}
+                        <div className="relative w-full h-full">
+                            {questions.map((q, idx) => {
+                                const isCompleted = completedList.includes(q.id);
+                                const isNext = completedList.length === idx;
+                                const isLocked = idx > completedList.length;
+                                
+                                const positions = [
+                                    { bottom: '12%', left: '16%' },
+                                    { bottom: '26%', left: '32%' },
+                                    { bottom: '44%', left: '46%' },
+                                    { bottom: '55%', left: '60%' },
+                                    { bottom: '68%', left: '44%' },
+                                    { bottom: '82%', left: '26%' },
+                                ];
+                                const pos = positions[idx];
+
+                                return (
+                                    <div 
+                                        key={idx}
+                                        className="absolute transform -translate-x-1/2 translate-y-1/2 flex flex-col items-center gap-1.5"
+                                        style={{ bottom: pos.bottom, left: pos.left, zIndex: 20 - idx }}
+                                    >
+                                        <button 
+                                            onClick={() => !isLocked && handleNodeClick(idx)}
+                                            disabled={isLocked}
+                                            className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border-4 flex items-center justify-center text-xl sm:text-2xl font-black shadow-lg transition-transform ${
+                                                isLocked 
+                                                    ? 'bg-slate-300 border-slate-400 text-slate-500 cursor-not-allowed opacity-85' 
+                                                    : isNext 
+                                                    ? 'bg-gradient-to-b from-yellow-300 to-amber-500 border-yellow-600 text-yellow-950 animate-bounce scale-115 cursor-pointer ring-4 ring-yellow-200' 
+                                                    : 'bg-gradient-to-b from-green-400 to-emerald-500 border-green-700 text-white hover:scale-105 cursor-pointer btn-candy'
+                                            }`}
+                                        >
+                                            {isCompleted ? '⭐' : (idx + 1)}
+                                        </button>
+
+                                        {/* 當前關卡上的跳跳冒險夥伴 */}
+                                        {isNext && (
+                                            <div className="text-4xl animate-bounce mt-[-15px] pointer-events-none drop-shadow-md">
+                                                {activeChar.avatarIcon}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* 終點糖果城堡 🏰 */}
+                            <div className="absolute top-[8%] left-[82%] transform -translate-x-1/2 text-center">
+                                <div className={`text-6xl sm:text-7xl transition-all duration-700 ${
+                                    isAllCompleted ? 'scale-125 drop-shadow-[0_0_25px_gold] animate-bounce' : 'grayscale opacity-75'
+                                }`}>
+                                    🏰
+                                </div>
+                                <span className="text-xs font-black text-amber-900 bg-white/90 px-2 py-0.5 rounded-full shadow-sm">
+                                    城堡終點
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 全破慶祝視窗 */}
+                    {isAllCompleted && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl z-50 backdrop-blur-sm p-4">
+                            <div className="bg-white p-7 rounded-3xl text-center max-w-sm w-full shadow-2xl border-4 border-yellow-400 animate-char-jump">
+                                <div className="text-7xl mb-3 animate-bounce">👑</div>
+                                <h2 className="text-3xl font-black text-slate-800 mb-2">全部闖關成功！</h2>
+                                <p className="text-base text-slate-600 font-bold mb-4">{activeChar.winMsg}</p>
+                                <div className="bg-yellow-100 text-yellow-900 font-black text-xl py-2.5 px-5 rounded-full mb-6 inline-block border-2 border-yellow-300">
+                                    榮獲稱號：{isBasic ? '乘法小勇士 🌟' : '直式乘法大師 🏆'}
+                                </div>
+                                <button 
+                                    onClick={() => setView('student-hub')} 
+                                    className="btn-candy w-full bg-blue-500 border-b-6 border-blue-700 text-white font-black py-3.5 rounded-2xl text-xl"
+                                >
+                                    回大廳領取獎勵 🎁
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 5. 關卡過場動畫 (AnimationView)
+        // ==========================================
+        function AnimationView({ activeChar, mode, idx, onComplete }) {
+            const question = (mode === 'basic' ? BASIC_QUESTIONS : ADV_QUESTIONS)[idx];
+            
+            useEffect(() => {
+                SoundManager.play('phase');
+                const timer = setTimeout(() => {
+                    onComplete();
+                }, 3000);
+                return () => clearTimeout(timer);
+            }, [onComplete]);
+
+            return (
+                <div className="fixed inset-0 bg-gradient-to-b from-sky-400 via-sky-300 to-amber-100 z-50 flex flex-col items-center justify-center overflow-hidden">
+                    <div className="text-center z-10 mb-8">
+                        <div className="inline-block bg-white/90 px-6 py-2 rounded-full border-3 border-amber-400 text-amber-900 font-black text-xl shadow-md mb-2">
+                            {mode === 'basic' ? '🍄 基礎冒險' : '⭐ 進階挑戰'}
+                        </div>
+                        <h2 className="text-5xl font-black text-white drop-shadow-[0_4px_6px_rgba(0,0,0,0.3)]">
+                            第 {idx + 1} 關！
+                        </h2>
+                    </div>
+
+                    <div className="relative h-64 w-full max-w-md flex flex-col items-center justify-end">
+                        {/* 黃金問號磚塊 */}
+                        <div className="absolute top-0 w-24 h-24 block-question rounded-2xl flex items-center justify-center text-5xl font-black text-amber-900 shadow-xl z-20">
+                            ?
+                        </div>
+                        
+                        {/* 掉出的乘法算式泡泡 */}
+                        <div className="absolute top-28 bg-white px-7 py-3 rounded-full border-4 border-amber-400 text-4xl font-black z-10 shadow-2xl text-slate-800 animate-bounce">
+                            {question.n1} × {question.n2}
+                        </div>
+
+                        {/* 頂磚塊跳躍的主角 */}
+                        <div className="text-8xl z-30 animate-char-jump">
+                            {activeChar.avatarIcon}
+                        </div>
+                        
+                        {/* 草地地平線 */}
+                        <div className="absolute bottom-[-15px] w-[140%] h-12 bg-emerald-500 border-t-8 border-emerald-700 rounded-t-[50%] z-0"></div>
+                    </div>
+
+                    <div className="mt-8 text-white font-black text-lg bg-black/25 px-5 py-1.5 rounded-full animate-pulse">
+                        準備作答中...
+                    </div>
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 6. 直式計算主遊戲 (MathGameView)
+        //    *** 徹底修復實體鍵盤、position 卡死與 DEL 退格問題 ***
+        // ==========================================
+        function MathGameView({ user, activeChar, mode, idx, updateUserData, onFinish }) {
+            const question = (mode === 'basic' ? BASIC_QUESTIONS : ADV_QUESTIONS)[idx];
+            const n1 = question.n1; 
+            const n2 = question.n2; 
+            
+            const t0 = n1 % 10;
+            const t1 = Math.floor(n1 / 10);
+            const b0 = n2 % 10;
+            const b1 = Math.floor(n2 / 10);
+
+            // 第一排乘積 (b0 * n1)
+            const p0_raw = t0 * b0;
+            const p0 = p0_raw % 10;
+            const c1 = Math.floor(p0_raw / 10); 
+            
+            const p1_raw = (t1 * b0) + c1;
+            const p1 = p1_raw % 10;
+            const c2 = Math.floor(p1_raw / 10); 
+            
+            // 第二排乘積 (b1 * n1)
+            const p2_raw = t0 * b1;
+            const p2 = p2_raw % 10;
+            const c3 = Math.floor(p2_raw / 10); 
+            
+            const p3_raw = (t1 * b1) + c3;
+            const p3 = p3_raw % 10;
+            const c4 = Math.floor(p3_raw / 10); 
+            
+            const total = n1 * n2;
+
+            // 狀態管理
+            const [step, setStep] = useState(0); 
+            const [gridState, setGridState] = useState({}); 
+            const [focusCell, setFocusCell] = useState("2,4");
+            const [pressedKey, setPressedKey] = useState(null); // 實體鍵盤視覺回饋
+            
+            const expectedSequence = useRef([]);
+            const [isAdditionPhase, setIsAdditionPhase] = useState(false);
+            const [additionSoundPlayed, setAdditionSoundPlayed] = useState(false);
+
+            const [errorMsg, setErrorMsg] = useState("");
+            const [errorType, setErrorType] = useState(""); 
+            const [showSuccessAnim, setShowSuccessAnim] = useState(false);
+            const [hintLevel, setHintLevel] = useState(0);
+
+            // 構建直式計算嚴格步驟序列
+            useEffect(() => {
+                const seq = [];
+                // R2: 個位相乘 (b0 乘以 n1 的個位、十位)
+                seq.push({ 
+                    type: 'input', row: 2, col: 4, val: p0, carryHand: c1, 
+                    hlBottom: '1,4', hlTop: '0,4', 
+                    hint: `先算個位：${b0} × ${t0} = ${p0_raw}，個位寫 ${p0}${c1 > 0 ? `，進位 ${c1} 放手上` : ''}。` 
+                });
+                seq.push({ 
+                    type: 'input', row: 2, col: 3, val: p1, carryHand: c2, 
+                    hlBottom: '1,4', hlTop: '0,3', 
+                    hint: `算十位：${b0} × ${t1} = ${t1 * b0}${c1 > 0 ? `，加上進位的 ${c1} 是 ${p1_raw}` : ''}。` 
+                });
+                if (c2 > 0) {
+                    seq.push({ 
+                        type: 'input', row: 2, col: 2, val: c2, carryHand: 0, 
+                        hlBottom: '', hlTop: '', 
+                        hint: `將最後的進位 ${c2} 寫在百位。` 
+                    });
+                }
+                
+                // R3: 十位定位 (換十位相乘，必須往左對齊十位)
+                seq.push({ 
+                    type: 'position', row: 3, col: 3, carryHand: 0, 
+                    hlBottom: '1,3', hlTop: '', 
+                    hint: '現在換十位數相乘，請點選十位對齊的這格（看發光的黃色方塊）！' 
+                });
+                
+                // R3: 十位相乘 (b1 乘以 n1 的個位、十位)
+                seq.push({ 
+                    type: 'input', row: 3, col: 3, val: p2, carryHand: c3, 
+                    hlBottom: '1,3', hlTop: '0,4', 
+                    hint: `十位乘個位：${b1} × ${t0} = ${p2_raw}，寫 ${p2}${c3 > 0 ? `，進位 ${c3} 放手上` : ''}。` 
+                });
+                seq.push({ 
+                    type: 'input', row: 3, col: 2, val: p3, carryHand: c4, 
+                    hlBottom: '1,3', hlTop: '0,3', 
+                    hint: `十位乘十位：${b1} × ${t1} = ${t1 * b1}${c3 > 0 ? `，加上進位的 ${c3} 是 ${p3_raw}` : ''}。` 
+                });
+                if (c4 > 0) {
+                    seq.push({ 
+                        type: 'input', row: 3, col: 1, val: c4, carryHand: 0, 
+                        hlBottom: '', hlTop: '', 
+                        hint: `將十位相乘最後的進位 ${c4} 寫在千位。` 
+                    });
+                }
+                
+                // R4: 加法階段
+                const s0 = total % 10;
+                const s1 = Math.floor(total / 10) % 10;
+                const s2 = Math.floor(total / 100) % 10;
+                const s3 = Math.floor(total / 1000);
+                
+                seq.push({ type: 'input', row: 4, col: 4, val: s0, carryHand: 0, hlBottom: '2,4', hlTop: '', hint: '個位相加落下來。' });
+                seq.push({ type: 'input', row: 4, col: 3, val: s1, carryHand: 0, hlBottom: '3,3', hlTop: '2,3', hint: '十位相加（記得進位）。' });
+                seq.push({ type: 'input', row: 4, col: 2, val: s2, carryHand: 0, hlBottom: '3,2', hlTop: '2,2', hint: '百位相加。' });
+                if (s3 > 0 || (c2 > 0 && c4 > 0)) {
+                    seq.push({ type: 'input', row: 4, col: 1, val: s3, carryHand: 0, hlBottom: '3,1', hlTop: '2,1', hint: '寫下最後千位的總和。' });
+                }
+                
+                seq.push({ type: 'done' });
+                
+                expectedSequence.current = seq;
+                setStep(0);
+                setGridState({});
+                setFocusCell(`${seq[0].row},${seq[0].col}`);
+                setAdditionSoundPlayed(false);
+                setShowSuccessAnim(false);
+            }, [n1, n2, idx]);
+
+            const currAction = expectedSequence.current[step];
+
+            // 檢查加法階段音效
+            useEffect(() => {
+                const addIndex = expectedSequence.current.findIndex(a => a.row === 4);
+                if (addIndex !== -1 && step >= addIndex) {
+                    setIsAdditionPhase(true);
+                    if (!additionSoundPlayed) {
+                        SoundManager.play('phase');
+                        setAdditionSoundPlayed(true);
+                    }
+                } else {
+                    setIsAdditionPhase(false);
+                }
+            }, [step, additionSoundPlayed]);
+
+            // ==========================================
+            // 核心修復：實體鍵盤（Physical Keyboard）監聽
+            // ==========================================
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (showSuccessAnim) return;
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+                    const key = e.key;
+                    if (key >= '0' && key <= '9') {
+                        e.preventDefault();
+                        const num = parseInt(key, 10);
+                        setPressedKey(num);
+                        setTimeout(() => setPressedKey(null), 140);
+                        handleNumpadInput(num);
+                    } else if (key === 'Backspace' || key === 'Delete') {
+                        e.preventDefault();
+                        setPressedKey('DEL');
+                        setTimeout(() => setPressedKey(null), 140);
+                        handleNumpadInput('DEL');
+                    } else if (key === 'Enter') {
+                        e.preventDefault();
+                        // 若剛好在 position 步驟，按 Enter 直接確認定位
+                        if (currAction && currAction.type === 'position') {
+                            handleCellClick(currAction.row, currAction.col);
+                        }
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [step, currAction, showSuccessAnim, gridState, focusCell]);
+
+            // 格子點選事件
+            const handleCellClick = (r, c) => {
+                if (showSuccessAnim) return;
+                
+                if (currAction && currAction.type === 'position') {
+                    if (r === currAction.row && c === currAction.col) {
+                        SoundManager.play('correct');
+                        const nextStep = step + 1;
+                        setStep(nextStep);
+                        const nextAction = expectedSequence.current[nextStep];
+                        setFocusCell(`${nextAction.row},${nextAction.col}`);
+                        setErrorMsg("答對了！換十位相乘，往左對齊一格！⭐");
+                        setErrorType("success");
+                        setTimeout(() => setErrorMsg(""), 1600);
+                        setHintLevel(0);
+                    } else {
+                        SoundManager.play('wrong');
+                        setErrorMsg("💡 換十位相乘囉！請往左一格對齊十位（點選閃爍黃格）！");
+                        setErrorType(`err-${Date.now()}`); 
+                        updateUserData(u => {
+                            const errs = {
+                                ...u.errors, 
+                                position: u.errors.position + 1, 
+                                shift: (r === 3 && c === 4) ? u.errors.shift + 1 : u.errors.shift
+                            };
+                            return {...u, errors: errs};
+                        });
+                    }
+                } else {
+                    if (`${r},${c}` !== focusCell && !gridState[`${r},${c}`]) {
+                        setErrorMsg("請先填寫目前發亮的格子喔！");
+                    }
+                }
+            };
+
+            // ==========================================
+            // 核心修復：數字輸入與 DEL 退格機制
+            // ==========================================
+            const handleNumpadInput = (num) => {
+                if (showSuccessAnim) return;
+
+                // 1. DEL 退格 / 清除功能
+                if (num === 'DEL') {
+                    setErrorMsg("");
+                    setErrorType("");
+                    // 若當前格已有輸入或想退回上一格修正
+                    if (step > 0) {
+                        const prevStep = step - 1;
+                        const prevAction = expectedSequence.current[prevStep];
+                        if (prevAction && prevAction.type === 'input') {
+                            const prevKey = `${prevAction.row},${prevAction.col}`;
+                            setGridState(prev => {
+                                const copy = { ...prev };
+                                delete copy[prevKey];
+                                return copy;
+                            });
+                            setStep(prevStep);
+                            setFocusCell(prevKey);
+                            SoundManager.play('phase');
+                            setErrorMsg("已退回上一格，請重新填寫！");
+                            setTimeout(() => setErrorMsg(""), 1200);
+                        } else if (prevAction && prevAction.type === 'position') {
+                            // 若前一步是 position，再往前退回 input
+                            if (step >= 2) {
+                                const p2Step = step - 2;
+                                const p2Action = expectedSequence.current[p2Step];
+                                if (p2Action && p2Action.type === 'input') {
+                                    const p2Key = `${p2Action.row},${p2Action.col}`;
+                                    setGridState(prev => {
+                                        const copy = { ...prev };
+                                        delete copy[p2Key];
+                                        return copy;
+                                    });
+                                    setStep(p2Step);
+                                    setFocusCell(p2Key);
+                                    SoundManager.play('phase');
+                                }
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // 2. 十位定位 (position) 步驟按數字時的智慧相容
+                if (currAction && currAction.type === 'position') {
+                    const nextInputStep = expectedSequence.current[step + 1];
+                    if (nextInputStep && nextInputStep.type === 'input' && num === nextInputStep.val) {
+                        // 學生直接算出了十位乘個位的數字並輸入！智慧完成定位與填寫
+                        SoundManager.play('correct');
+                        setGridState(prev => ({ ...prev, [`${nextInputStep.row},${nextInputStep.col}`]: num }));
+                        const nextNextStep = step + 2;
+                        const nextNextAction = expectedSequence.current[nextNextStep];
+                        setStep(nextNextStep);
+                        if (nextNextAction.type === 'done') {
+                            handleVictory();
+                        } else {
+                            setFocusCell(`${nextNextAction.row},${nextNextAction.col}`);
+                        }
+                        setErrorMsg("太厲害了！自動幫你對齊十位並寫入答案！⭐");
+                        setErrorType("success");
+                        setTimeout(() => setErrorMsg(""), 1800);
+                        setHintLevel(0);
+                        return;
+                    } else {
+                        // 學生按了其他數字或不知道要先定位
+                        SoundManager.play('wrong');
+                        setErrorMsg("💡 夥伴提醒：換乘十位數囉，請先點選發光的黃色方塊（十位要往左對齊）！");
+                        setErrorType(`err-${Date.now()}`);
+                        return;
+                    }
+                }
+
+                // 3. 常規 input 步驟驗證
+                if (currAction && currAction.type === 'input') {
+                    if (num === currAction.val) {
+                        SoundManager.play('correct');
+                        setGridState(prev => ({ ...prev, [focusCell]: num }));
+                        setErrorMsg("");
+                        setErrorType("");
+                        setHintLevel(0);
+                        
+                        const nextStep = step + 1;
+                        const nextAction = expectedSequence.current[nextStep];
+                        
+                        if (nextAction.type === 'done') {
+                            handleVictory();
+                        } else {
+                            setStep(nextStep);
+                            if (nextAction.type === 'input' || nextAction.type === 'position') {
+                                setFocusCell(`${nextAction.row},${nextAction.col}`);
+                            }
+                        }
+                    } else {
+                        SoundManager.play('wrong');
+                        let msg = "再算一次看看喔！加油！";
+                        
+                        const prevAction = expectedSequence.current[step - 1];
+                        if (prevAction && prevAction.carryHand > 0) {
+                            msg = "啊！別忘了把手上的進位加上去喔！✋";
+                            updateUserData(u => ({...u, errors: {...u.errors, carry: u.errors.carry + 1}}));
+                        } else {
+                            updateUserData(u => ({...u, errors: {...u.errors, calc: u.errors.calc + 1}}));
+                        }
+
+                        setErrorMsg(msg);
+                        setErrorType(`err-${Date.now()}`); 
+                    }
+                }
+            };
+
+            const handleVictory = () => {
+                setShowSuccessAnim(true);
+                SoundManager.play('win');
+                updateUserData(u => {
+                    const newU = { ...u, stars: u.stars + 3, coins: u.coins + 15 };
+                    if (mode === 'basic') {
+                        if (!newU.completedLevels.basic.includes(question.id)) {
+                            newU.completedLevels.basic.push(question.id);
+                            newU.basicCompleted += 1;
+                        }
+                    } else {
+                        if (!newU.completedLevels.adv.includes(question.id)) {
+                            newU.completedLevels.adv.push(question.id);
+                            newU.advCompleted += 1;
+                        }
+                    }
+                    return newU;
+                });
+            };
+
+            const handleHint = () => {
+                SoundManager.play('tap');
+                setHintLevel(l => Math.min(l + 1, 3));
+                updateUserData(u => ({...u, hintsUsed: u.hintsUsed + 1}));
+            };
+
+            // 渲染直式計算格子
+            const renderCell = (r, c, isStatic = false, staticVal = "") => {
+                const idStr = `${r},${c}`;
+                const isActive = focusCell === idStr && currAction?.type !== 'position';
+                const isPositionTarget = currAction?.type === 'position' && currAction.row === r && currAction.col === c;
+                const hasError = isActive && errorType.startsWith('err');
+                const isFilled = gridState[idStr] !== undefined;
+
+                // 正在相乘的乘數與被乘數高亮提示
+                const isBottomHighlight = currAction?.hlBottom === idStr;
+                const isTopHighlight = currAction?.hlTop === idStr;
+                
+                let cellClass = "math-cell ";
+                if (isStatic) {
+                    cellClass += "text-slate-800 ";
+                    if (isBottomHighlight) cellClass += "factor-hl-bottom ";
+                    if (isTopHighlight) cellClass += "factor-hl-top ";
+                } else {
+                    cellClass += "input-cell ";
+                    if (isActive) cellClass += "active ";
+                    if (hasError) cellClass += "error ";
+                    if (isFilled) cellClass += "filled ";
+                    if (isPositionTarget) cellClass += "position-target animate-bounce ";
+                }
+
+                return (
+                    <div 
+                        key={idStr} 
+                        id={`cell-${idStr}`}
+                        className={cellClass}
+                        onClick={() => !isStatic && handleCellClick(r, c)}
+                    >
+                        {isPositionTarget && (
+                            <span className="absolute -top-6 bg-amber-400 text-amber-950 text-[10px] font-black px-2 py-0.5 rounded-full whitespace-nowrap shadow animate-bounce">
+                                👆 點我
+                            </span>
+                        )}
+                        {isStatic ? staticVal : (gridState[idStr] !== undefined ? gridState[idStr] : '')}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="flex flex-col items-center max-w-lg mx-auto bg-white/95 p-5 sm:p-7 rounded-3xl shadow-2xl border-4 border-amber-300 relative">
+                    {/* 頂部資訊列 */}
+                    <div className="w-full flex justify-between items-center mb-4">
+                        <div className="bg-sky-100 text-sky-900 border-2 border-sky-300 px-4 py-1.5 rounded-2xl font-black flex items-center gap-2 text-sm">
+                            <span>{activeChar.avatarIcon}</span>
+                            <span>第 {idx + 1} 關：{question.n1} × {question.n2}</span>
+                        </div>
+                        <button 
+                            onClick={handleHint} 
+                            className="btn-candy bg-yellow-300 hover:bg-yellow-400 border-b-4 border-yellow-600 text-yellow-950 font-black px-3.5 py-1.5 rounded-2xl flex items-center gap-1.5 text-sm"
+                        >
+                            <i className="fa-regular fa-lightbulb"></i> 夥伴提示
+                        </button>
+                    </div>
+
+                    {/* 夥伴即時鼓勵與錯誤提示泡泡 */}
+                    <div className="h-14 w-full flex items-center justify-center mb-3">
+                        {errorMsg ? (
+                            <div className={`px-5 py-2 rounded-full font-black text-sm sm:text-base animate-bounce shadow-md flex items-center gap-2 ${
+                                errorType === 'success' 
+                                    ? 'bg-emerald-100 text-emerald-800 border-2 border-emerald-400' 
+                                    : 'bg-rose-100 text-rose-700 border-2 border-rose-400'
+                            }`}>
+                                <span>{errorType === 'success' ? '⭐' : '💡'}</span>
+                                <span>{errorMsg}</span>
+                            </div>
+                        ) : hintLevel > 0 && currAction ? (
+                            <div className="px-5 py-2 rounded-full font-bold text-sm bg-blue-50 text-blue-800 border-2 border-blue-300 shadow-sm flex items-center gap-2">
+                                <span>💡</span>
+                                <span>{currAction.hint}</span>
+                            </div>
+                        ) : (
+                            <div className="text-slate-500 font-bold text-sm flex items-center gap-1.5">
+                                <span>{activeChar.avatarIcon}</span>
+                                <span>{activeChar.greeting}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 超萌「進位放在手上」立體提示卡 */}
+                    {currAction && currAction.carryHand > 0 && !showSuccessAnim && (
+                        <div className="absolute right-2 sm:-right-6 top-24 bg-white border-4 border-rose-400 rounded-2xl p-3 shadow-2xl animate-bounce z-30 flex flex-col items-center">
+                            <span className="text-[11px] font-black text-rose-600 mb-0.5">手上進位</span>
+                            <div className="text-3xl flex items-center gap-1">
+                                <span>✋</span>
+                                <span className="font-black text-rose-600 text-2xl">+{currAction.carryHand}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 直式黑板區域 (五欄位嚴格排版，糖果圓角風格) */}
+                    <div className="bg-slate-50 p-6 rounded-3xl border-3 border-slate-200 mb-5 relative w-full shadow-inner">
+                        {/* R0: 被乘數 */}
+                        <div className="math-grid mb-1">
+                            {renderCell(0,0,true,"")} 
+                            {renderCell(0,1,true,"")} 
+                            {renderCell(0,2,true,"")} 
+                            {renderCell(0,3,true,t1||"")} 
+                            {renderCell(0,4,true,t0)}
+                        </div>
+                        {/* R1: 乘數 */}
+                        <div className="math-grid">
+                            {renderCell(1,0,true,"")} 
+                            {renderCell(1,1,true,"")} 
+                            {renderCell(1,2,true,"×")} 
+                            {renderCell(1,3,true,b1)} 
+                            {renderCell(1,4,true,b0)}
+                        </div>
+                        
+                        {/* 分隔橫線 */}
+                        <div className="w-full h-1 bg-slate-700 my-3 rounded-full"></div>
+                        
+                        {/* R2: 個位乘積 */}
+                        <div className="math-grid mb-1">
+                            {renderCell(2,0,true,"")} 
+                            {renderCell(2,1,true,"")} 
+                            {renderCell(2,2)} 
+                            {renderCell(2,3)} 
+                            {renderCell(2,4)}
+                        </div>
+                        
+                        {/* R3: 十位乘積 (十位要往左對齊) */}
+                        <div className="math-grid">
+                            <div className="flex items-center justify-center text-3xl font-black text-slate-700">
+                                {isAdditionPhase ? "+" : ""}
+                            </div>
+                            {renderCell(3,1)} 
+                            {renderCell(3,2)} 
+                            {renderCell(3,3)} 
+                            {renderCell(3,4,true,"")}
+                        </div>
+                        
+                        {/* 加法底線 */}
+                        {isAdditionPhase && (
+                            <div className="w-full h-1 bg-slate-700 my-3 rounded-full"></div>
+                        )}
+                        
+                        {/* R4: 總和答案 */}
+                        <div className="math-grid">
+                            {renderCell(4,0,true,"")} 
+                            {renderCell(4,1)} 
+                            {renderCell(4,2)} 
+                            {renderCell(4,3)} 
+                            {renderCell(4,4)}
+                        </div>
+                    </div>
+
+                    {/* 虛擬糖果數字鍵盤 (支援實體鍵盤高亮連動) */}
+                    {!showSuccessAnim && (
+                        <div className="w-full max-w-xs flex flex-col items-center gap-2">
+                            {/* 鍵盤提示小文字 */}
+                            <div className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                                <i className="fa-solid fa-keyboard"></i>
+                                <span>支援電腦實體數字鍵、小鍵盤與 Backspace 刪除鍵</span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2.5 w-full">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => {
+                                    const isPressed = pressedKey === num;
+                                    return (
+                                        <button 
+                                            key={num}
+                                            onClick={() => {
+                                                SoundManager.play('tap');
+                                                handleNumpadInput(num);
+                                            }}
+                                            className={`btn-candy bg-white hover:bg-slate-50 border-b-5 border-slate-300 text-3xl font-black text-slate-800 py-3.5 rounded-2xl shadow-sm ${
+                                                isPressed ? 'btn-pressed bg-amber-100 border-amber-400' : ''
+                                            }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    );
+                                })}
+                                
+                                {/* DEL 退格刪除鍵 */}
+                                <button 
+                                    onClick={() => {
+                                        SoundManager.play('tap');
+                                        handleNumpadInput('DEL');
+                                    }}
+                                    className={`btn-candy bg-rose-100 hover:bg-rose-200 border-b-5 border-rose-300 text-rose-700 font-black py-3.5 rounded-2xl shadow-sm text-lg flex items-center justify-center gap-1 ${
+                                        pressedKey === 'DEL' ? 'btn-pressed bg-rose-200' : ''
+                                    }`}
+                                    title="清除當前錯誤或退回上一格修正"
+                                >
+                                    <i className="fa-solid fa-delete-left"></i>
+                                    <span>刪除</span>
+                                </button>
+                                
+                                {/* 0 鍵 */}
+                                <button 
+                                    onClick={() => {
+                                        SoundManager.play('tap');
+                                        handleNumpadInput(0);
+                                    }}
+                                    className={`btn-candy bg-white hover:bg-slate-50 border-b-5 border-slate-300 text-3xl font-black text-slate-800 py-3.5 rounded-2xl shadow-sm ${
+                                        pressedKey === 0 ? 'btn-pressed bg-amber-100 border-amber-400' : ''
+                                    }`}
+                                >
+                                    0
+                                </button>
+
+                                {/* 換十位快速對齊輔助按鈕 */}
+                                {currAction?.type === 'position' ? (
+                                    <button 
+                                        onClick={() => handleCellClick(currAction.row, currAction.col)}
+                                        className="btn-candy bg-amber-400 hover:bg-amber-500 border-b-5 border-amber-600 text-amber-950 font-black py-3.5 rounded-2xl text-xs flex flex-col items-center justify-center animate-bounce shadow-md"
+                                    >
+                                        <span>👉 對齊十位</span>
+                                    </button>
+                                ) : (
+                                    <div className="bg-transparent"></div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 過關成功彈窗 */}
+                    {showSuccessAnim && (
+                        <div className="absolute inset-0 bg-white/95 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center z-50 p-6">
+                            <div className="text-7xl animate-bounce mb-2">🌟</div>
+                            <h2 className="text-4xl font-black text-emerald-600 mb-1">闖關成功！</h2>
+                            <p className="text-base font-bold text-slate-600 mb-2">{activeChar.winMsg}</p>
+                            
+                            <div className="bg-amber-100 text-amber-900 px-5 py-2 rounded-full font-black text-base mb-6 border-2 border-amber-300">
+                                獲得 ⭐ +3 顆星星與 🪙 +15 金幣！
+                            </div>
+
+                            <div className="flex gap-4 w-full max-w-xs">
+                                <button 
+                                    onClick={() => {
+                                        setStep(0); 
+                                        setGridState({}); 
+                                        setFocusCell("2,4"); 
+                                        setShowSuccessAnim(false);
+                                    }} 
+                                    className="btn-candy flex-1 py-3 bg-slate-100 border-b-4 border-slate-300 rounded-2xl font-black text-slate-700 text-base"
+                                >
+                                    再玩一次
+                                </button>
+                                <button 
+                                    onClick={onFinish} 
+                                    className="btn-candy flex-1 py-3 bg-blue-500 border-b-4 border-blue-700 rounded-2xl font-black text-white text-base shadow-lg"
+                                >
+                                    下一關 🗺️
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==========================================
+        // 7. 老師管理後台 (TeacherView)
+        // ==========================================
+        function TeacherView({ data, setStudentsData }) {
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [selectedStudent, setSelectedStudent] = useState(null);
+            const [qrInputUrl, setQrInputUrl] = useState(window.location.href);
+            const [confirmClear, setConfirmClear] = useState(false);
+
+            const totalErrors = data.reduce((acc, curr) => {
+                acc.calc += curr.errors?.calc || 0;
+                acc.carry += curr.errors?.carry || 0;
+                acc.position += curr.errors?.position || 0;
+                acc.shift += curr.errors?.shift || 0;
+                return acc;
+            }, { calc: 0, carry: 0, position: 0, shift: 0 });
+
+            const sortedErrors = Object.entries(totalErrors).sort((a, b) => b[1] - a[1]);
+            const errorLabels = {
+                calc: "基本乘加計算錯誤",
+                carry: "忘記進位或進位算錯",
+                position: "直式位置點選錯誤",
+                shift: "十位數相乘未往左對齊"
+            };
+
+            return (
+                <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden min-h-[80vh] flex flex-col border-4 border-purple-200">
+                    {/* 後台標題 */}
+                    <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white flex flex-wrap justify-between items-center gap-4">
+                        <h2 className="text-2xl font-black flex items-center gap-2.5">
+                            <i className="fa-solid fa-chalkboard-user"></i>
+                            <span>老師教學管理與分析後台</span>
+                        </h2>
+                        <div className="flex bg-purple-900/50 rounded-2xl p-1">
+                            <button 
+                                onClick={() => setActiveTab('dashboard')}
+                                className={`px-5 py-2 rounded-xl font-black text-sm transition-colors ${
+                                    activeTab === 'dashboard' ? 'bg-white text-purple-900 shadow-sm' : 'text-purple-200 hover:text-white'
+                                }`}
+                            >
+                                📊 學習紀錄與診斷
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('qr')}
+                                className={`px-5 py-2 rounded-xl font-black text-sm transition-colors ${
+                                    activeTab === 'qr' ? 'bg-white text-purple-900 shadow-sm' : 'text-purple-200 hover:text-white'
+                                }`}
+                            >
+                                📱 學生 QR Code
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-6 flex-1 bg-slate-50">
+                        {activeTab === 'dashboard' && (
+                            <div className="flex flex-col gap-6">
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    {/* 全班易錯點分析 */}
+                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                                        <h3 className="text-lg font-black text-slate-800 mb-3 flex items-center gap-2">
+                                            <i className="fa-solid fa-chart-pie text-purple-500"></i>
+                                            <span>全班最常出錯的盲點排名</span>
+                                        </h3>
+                                        <div className="space-y-2.5">
+                                            {sortedErrors.map(([key, val], idx) => (
+                                                <div key={key} className="flex items-center gap-3 p-2 rounded-xl bg-slate-50">
+                                                    <div className="w-7 h-7 rounded-full flex items-center justify-center font-black text-white text-xs" 
+                                                         style={{backgroundColor: idx===0 ? '#F59E0B' : idx===1 ? '#94A3B8' : idx===2 ? '#B45309' : '#CBD5E1'}}>
+                                                        {idx + 1}
+                                                    </div>
+                                                    <div className="flex-1 font-bold text-slate-700 text-sm">{errorLabels[key]}</div>
+                                                    <div className="bg-red-100 text-red-700 px-3 py-1 rounded-full font-black text-xs">
+                                                        {val} 次
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {totalErrors.calc === 0 && totalErrors.carry === 0 && (
+                                                <div className="text-slate-400 text-sm py-4 text-center">目前尚無錯誤紀錄。</div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* 學生名冊與進度 */}
+                                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                                        <h3 className="text-lg font-black text-slate-800 mb-3 flex items-center gap-2">
+                                            <i className="fa-solid fa-users text-blue-500"></i>
+                                            <span>學生闖關成效總表</span>
+                                        </h3>
+                                        <div className="overflow-x-auto rounded-xl border border-slate-200 flex-1">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-slate-100 text-slate-600 text-xs font-black">
+                                                        <th className="p-2.5">姓名</th>
+                                                        <th className="p-2.5">夥伴</th>
+                                                        <th className="p-2.5">基礎</th>
+                                                        <th className="p-2.5">進階</th>
+                                                        <th className="p-2.5">錯誤</th>
+                                                        <th className="p-2.5 text-center">診斷</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data.length === 0 ? (
+                                                        <tr><td colSpan="6" className="p-4 text-center text-slate-400 text-sm">尚無學生紀錄</td></tr>
+                                                    ) : data.map((student, i) => {
+                                                        const errSum = (student.errors?.calc || 0) + (student.errors?.carry || 0) + (student.errors?.position || 0) + (student.errors?.shift || 0);
+                                                        const sChar = CHARACTERS.find(c => c.id === student.characterId) || CHARACTERS[0];
+                                                        return (
+                                                            <tr key={i} className="border-t border-slate-100 hover:bg-blue-50 text-xs">
+                                                                <td className="p-2.5 font-black text-slate-800">{student.name}</td>
+                                                                <td className="p-2.5 text-slate-600">{sChar.avatarIcon}</td>
+                                                                <td className="p-2.5 text-slate-600">{student.basicCompleted}/6</td>
+                                                                <td className="p-2.5 text-slate-600">{student.advCompleted}/6</td>
+                                                                <td className="p-2.5">
+                                                                    <span className={`px-2 py-0.5 rounded font-black ${errSum > 6 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                        {errSum}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-2.5 text-center">
+                                                                    <button 
+                                                                        onClick={() => setSelectedStudent(student)}
+                                                                        className="text-blue-600 hover:text-blue-800 font-bold bg-blue-50 hover:bg-blue-100 px-2.5 py-1 rounded-lg"
+                                                                    >
+                                                                        查看
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <div className="mt-3 flex justify-end">
+                                            {!confirmClear ? (
+                                                <button onClick={() => setConfirmClear(true)} className="text-red-500 hover:text-red-700 text-xs font-bold flex items-center gap-1">
+                                                    <i className="fa-solid fa-trash"></i> 清除全部紀錄
+                                                </button>
+                                            ) : (
+                                                <div className="flex items-center gap-2 bg-red-50 p-2 rounded-xl border border-red-200">
+                                                    <span className="text-red-700 text-xs font-bold">確定要清空嗎？</span>
+                                                    <button onClick={() => { setStudentsData([]); setConfirmClear(false); }} className="bg-red-500 text-white px-2.5 py-1 rounded text-xs font-bold">確定</button>
+                                                    <button onClick={() => setConfirmClear(false)} className="bg-slate-300 text-slate-700 px-2.5 py-1 rounded text-xs font-bold">取消</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 個別學生詳細分析 */}
+                                {selectedStudent && (
+                                    <div className="bg-blue-50 p-5 rounded-2xl border-2 border-blue-200 relative">
+                                        <button 
+                                            onClick={() => setSelectedStudent(null)}
+                                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+                                        >
+                                            <i className="fa-solid fa-xmark text-lg"></i>
+                                        </button>
+                                        <h3 className="text-xl font-black text-blue-900 mb-3">
+                                            {selectedStudent.name} 的個別分析報告
+                                        </h3>
+                                        <div className="grid md:grid-cols-3 gap-4">
+                                            <div className="bg-white p-4 rounded-xl shadow-sm">
+                                                <div className="text-slate-500 font-bold text-xs mb-1">完成進度</div>
+                                                <div className="text-sm">基礎冒險：<span className="font-black text-blue-600">{selectedStudent.basicCompleted} / 6</span></div>
+                                                <div className="text-sm">進階挑戰：<span className="font-black text-rose-600">{selectedStudent.advCompleted} / 6</span></div>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl shadow-sm md:col-span-2">
+                                                <div className="text-slate-500 font-bold text-xs mb-1">錯誤項目統計</div>
+                                                <div className="grid grid-cols-2 gap-2 text-xs">
+                                                    <div>進位錯誤：<span className="font-bold text-red-500">{selectedStudent.errors?.carry || 0} 次</span></div>
+                                                    <div>十位對齊：<span className="font-bold text-red-500">{selectedStudent.errors?.shift || 0} 次</span></div>
+                                                    <div>計算錯誤：<span className="font-bold text-red-500">{selectedStudent.errors?.calc || 0} 次</span></div>
+                                                    <div>位置點選：<span className="font-bold text-red-500">{selectedStudent.errors?.position || 0} 次</span></div>
+                                                </div>
+                                                <div className="mt-2.5 text-xs text-blue-800 font-bold bg-blue-100/60 p-2 rounded-lg">
+                                                    💡 教師個別化補救建議：
+                                                    {(selectedStudent.errors?.carry || 0) > (selectedStudent.errors?.shift || 0) 
+                                                        ? " 學生容易漏加進位，建議練習前提醒『用小手指比出進位放手上』的身體動作記憶。" 
+                                                        : (selectedStudent.errors?.shift || 0) > 0 
+                                                        ? " 學生在十位相乘時空間定位易偏右，可強調『十位乘個位，答案對齊十位』的口訣。" 
+                                                        : " 基礎觀念清晰，運算流暢，可直接挑戰多位數乘法！"}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'qr' && (
+                            <div className="flex flex-col items-center justify-center py-8">
+                                <h3 className="text-2xl font-black text-slate-800 mb-1">學生掃描練習入口</h3>
+                                <p className="text-slate-500 mb-5 font-bold text-sm">請讓學生使用平板或手機掃描進入練習</p>
+                                
+                                <div className="mb-5 w-full max-w-md flex flex-col gap-1.5">
+                                    <label className="text-xs font-bold text-slate-600">練習網址 (可直接修改)：</label>
+                                    <input 
+                                        type="text" 
+                                        value={qrInputUrl} 
+                                        onChange={(e) => setQrInputUrl(e.target.value)}
+                                        className="w-full p-2.5 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none text-slate-700 font-bold text-sm"
+                                    />
+                                </div>
+                                
+                                <div className="bg-white p-5 rounded-3xl shadow-xl border-4 border-purple-200 mb-6 flex flex-col items-center">
+                                    {qrInputUrl ? (
+                                        <img 
+                                            src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrInputUrl)}`} 
+                                            alt="Student Login QR" 
+                                            className="rounded-xl border border-slate-100" 
+                                        />
+                                    ) : (
+                                        <div className="w-[250px] h-[250px] flex items-center justify-center bg-slate-100 rounded-xl text-slate-400 font-bold">
+                                            請輸入網址
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button 
+                                        onClick={() => window.print()} 
+                                        className="btn-candy px-6 py-2.5 bg-slate-800 text-white font-bold rounded-xl flex items-center gap-2 text-sm"
+                                    >
+                                        <i className="fa-solid fa-print"></i> 列印 QR Code
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

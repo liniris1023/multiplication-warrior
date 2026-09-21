@@ -1,0 +1,1273 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>乘法小勇士 - 闖關冒險</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #87CEEB; /* Sky Blue */
+            margin: 0;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        /* 遊戲風格按鈕 */
+        .btn-game {
+            transition: all 0.1s ease;
+            box-shadow: 0 6px 0 0 rgba(0,0,0,0.2);
+        }
+        .btn-game:active {
+            transform: translateY(6px);
+            box-shadow: 0 0px 0 0 rgba(0,0,0,0.2);
+        }
+
+        /* 磚塊樣式 */
+        .brick {
+            background-color: #D2691E;
+            background-image: 
+                linear-gradient(335deg, rgba(255,255,255,0.3) 10%, transparent 10%),
+                linear-gradient(155deg, rgba(0,0,0,0.3) 10%, transparent 10%);
+            border: 2px solid #8B4513;
+        }
+        
+        .question-block {
+            background-color: #FFD700;
+            border: 4px solid #B8860B;
+            position: relative;
+            animation: glow 1.5s infinite alternate;
+        }
+
+        @keyframes glow {
+            from { box-shadow: 0 0 10px #FFD700; }
+            to { box-shadow: 0 0 20px #FFF, 0 0 15px #FFD700; }
+        }
+
+        /* 動畫 */
+        @keyframes walk {
+            0% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-5px) rotate(5deg); }
+            50% { transform: translateY(0) rotate(0deg); }
+            75% { transform: translateY(-5px) rotate(-5deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+
+        .animate-walk {
+            animation: walk 0.5s infinite;
+        }
+
+        @keyframes jumpHit {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-80px); }
+            100% { transform: translateY(0); }
+        }
+        
+        .animate-jump {
+            animation: jumpHit 0.6s ease-out forwards;
+        }
+
+        @keyframes blockBounce {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0); }
+        }
+
+        .animate-block-bounce {
+            animation: blockBounce 0.3s ease-out forwards;
+        }
+
+        @keyframes itemDrop {
+            0% { transform: translateY(20px) scale(0); opacity: 0; }
+            50% { transform: translateY(-40px) scale(1.2); opacity: 1; }
+            100% { transform: translateY(-10px) scale(1); opacity: 1; }
+        }
+
+        .animate-item-drop {
+            animation: itemDrop 0.6s ease-out forwards;
+            opacity: 0; /* Initial state before animation */
+            animation-delay: 0.3s; 
+        }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0); opacity: 1; }
+            100% { transform: translateY(-100px); opacity: 0; }
+        }
+        .animate-float-up {
+            animation: floatUp 1.5s ease-out forwards;
+        }
+
+        /* 直式網格樣式 */
+        .math-grid {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(40px, 60px));
+            gap: 4px;
+            justify-content: center;
+        }
+        
+        .math-cell {
+            width: 100%;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            border-radius: 8px;
+        }
+
+        .input-cell {
+            background-color: white;
+            border: 2px dashed #CBD5E1;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .input-cell.active {
+            border: 4px solid #3B82F6;
+            background-color: #EFF6FF;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        
+        .input-cell.error {
+            border: 4px solid #EF4444;
+            background-color: #FEF2F2;
+            animation: shake 0.4s;
+        }
+
+        .input-cell.filled {
+            border: 2px solid #94A3B8;
+            background-color: #F8FAFC;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+        }
+
+        /* 裝飾性背景 */
+        .bg-clouds {
+            background-image: radial-gradient(circle, white 20%, transparent 20%),
+                              radial-gradient(circle, white 20%, transparent 20%);
+            background-size: 100px 100px;
+            background-position: 0 0, 50px 50px;
+            opacity: 0.3;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* 隱藏滾動條但允許滾動 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const BASIC_QUESTIONS = [
+            { id: 'b1', n1: 12, n2: 13 },
+            { id: 'b2', n1: 21, n2: 14 },
+            { id: 'b3', n1: 23, n2: 12 },
+            { id: 'b4', n1: 34, n2: 12 },
+            { id: 'b5', n1: 42, n2: 21 },
+            { id: 'b6', n1: 31, n2: 23 }
+        ];
+
+        const ADV_QUESTIONS = [
+            { id: 'a1', n1: 27, n2: 14 },
+            { id: 'a2', n1: 36, n2: 25 },
+            { id: 'a3', n1: 48, n2: 32 },
+            { id: 'a4', n1: 59, n2: 43 },
+            { id: 'a5', n1: 67, n2: 56 },
+            { id: 'a6', n1: 84, n2: 79 }
+        ];
+
+        const SoundManager = {
+            synth: null,
+            init() {
+                if (!this.synth) {
+                    this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    this.synth.volume.value = -8; // 稍微降低音量避免太刺耳
+                }
+            },
+            play(type) {
+                try {
+                    if (Tone.context.state !== 'running') Tone.start();
+                    this.init();
+                    const now = Tone.now();
+                    if (type === 'correct') {
+                        this.synth.triggerAttackRelease("E5", "8n", now);
+                    } else if (type === 'wrong') {
+                        this.synth.triggerAttackRelease("C3", "8n", now);
+                    } else if (type === 'phase') {
+                        this.synth.triggerAttackRelease(["C4", "E4", "G4"], "4n", now);
+                    } else if (type === 'win') {
+                        this.synth.triggerAttackRelease("C5", "8n", now);
+                        this.synth.triggerAttackRelease("E5", "8n", now + 0.15);
+                        this.synth.triggerAttackRelease("G5", "8n", now + 0.3);
+                        this.synth.triggerAttackRelease("C6", "4n", now + 0.45);
+                    }
+                } catch (e) {
+                    console.warn("Audio context not ready yet.");
+                }
+            }
+        };
+
+        // Initial Data Structure for a Student
+        const createNewStudent = (name) => ({
+            name,
+            stars: 0,
+            coins: 0,
+            basicCompleted: 0,
+            advCompleted: 0,
+            lastPlayed: new Date().toLocaleDateString(),
+            errors: {
+                calc: 0,
+                carry: 0,
+                position: 0, // General wrong cell click
+                shift: 0     // Specifically forgetting to shift left on row 2
+            },
+            hintsUsed: 0,
+            completedLevels: {
+                basic: [], // array of ids
+                adv: []
+            }
+        });
+
+        function App() {
+            // View Routing: 'home', 'teacher', 'student-login', 'student-hub', 'map', 'animation', 'game', 'victory'
+            const [view, setView] = useState('home');
+            
+            // Global State
+            const [studentsData, setStudentsData] = useState([]);
+            const [currentUser, setCurrentUser] = useState(null);
+            
+            // Game State
+            const [gameMode, setGameMode] = useState('basic'); // 'basic' | 'adv'
+            const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+            
+            // Load/Save to LocalStorage (Simulated DB)
+            useEffect(() => {
+                const saved = localStorage.getItem('mathGameData');
+                if (saved) setStudentsData(JSON.parse(saved));
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('mathGameData', JSON.stringify(studentsData));
+            }, [studentsData]);
+
+            // Handlers
+            const handleStudentLogin = (name) => {
+                let user = studentsData.find(s => s.name === name);
+                if (!user) {
+                    user = createNewStudent(name);
+                    setStudentsData([...studentsData, user]);
+                } else {
+                    // Update last played
+                    const updated = { ...user, lastPlayed: new Date().toLocaleDateString() };
+                    setStudentsData(studentsData.map(s => s.name === name ? updated : s));
+                }
+                setCurrentUser(user.name);
+                setView('student-hub');
+            };
+
+            const updateUserData = (updater) => {
+                setStudentsData(prev => prev.map(s => {
+                    if (s.name === currentUser) {
+                        return updater(s);
+                    }
+                    return s;
+                }));
+            };
+
+            return (
+                <div className="min-h-screen relative pb-10">
+                    <div className="bg-clouds"></div>
+                    
+                    {/* Header (Minimal) */}
+                    {view !== 'home' && view !== 'student-login' && view !== 'animation' && view !== 'game' && (
+                        <div className="p-4 flex justify-between items-center bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
+                            <h1 className="text-xl font-bold text-slate-700 flex items-center gap-2">
+                                <i className="fa-solid fa-gamepad text-blue-500"></i>
+                                乘法闖關
+                            </h1>
+                            <button onClick={() => setView('home')} className="px-4 py-2 bg-slate-200 rounded-full font-bold text-slate-600 active:bg-slate-300">
+                                回首頁
+                            </button>
+                        </div>
+                    )}
+
+                    {/* View Rendering */}
+                    <div className="max-w-4xl mx-auto pt-6 px-4">
+                        {view === 'home' && <HomeView setView={setView} />}
+                        {view === 'teacher' && <TeacherView data={studentsData} setStudentsData={setStudentsData} />}
+                        {view === 'student-login' && <StudentLogin onLogin={handleStudentLogin} setView={setView} />}
+                        {view === 'student-hub' && (
+                            <StudentHub 
+                                user={studentsData.find(s => s.name === currentUser)} 
+                                setView={setView} 
+                                setGameMode={setGameMode}
+                            />
+                        )}
+                        {view === 'map' && (
+                            <MapView 
+                                user={studentsData.find(s => s.name === currentUser)} 
+                                mode={gameMode} 
+                                setView={setView}
+                                setCurrentQuestionIdx={setCurrentQuestionIdx}
+                            />
+                        )}
+                        {view === 'animation' && (
+                            <AnimationView 
+                                mode={gameMode} 
+                                idx={currentQuestionIdx} 
+                                onComplete={() => setView('game')} 
+                            />
+                        )}
+                        {view === 'game' && (
+                            <MathGameView 
+                                user={studentsData.find(s => s.name === currentUser)}
+                                mode={gameMode}
+                                idx={currentQuestionIdx}
+                                updateUserData={updateUserData}
+                                onFinish={() => setView('map')}
+                            />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        function HomeView({ setView }) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[80vh] gap-8">
+                    <div className="text-center mb-8">
+                        <h1 className="text-5xl font-black text-white drop-shadow-[0_4px_4px_rgba(0,0,0,0.3)] mb-4 tracking-wider">
+                            ✖️ 直式乘法大冒險 ✖️
+                        </h1>
+                        <p className="text-xl text-blue-900 font-bold bg-white/70 inline-block px-6 py-2 rounded-full shadow-sm">
+                            準備好迎接挑戰了嗎？
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-6 w-full max-w-2xl px-4">
+                        <button 
+                            onClick={() => setView('student-login')}
+                            className="btn-game flex-1 bg-green-500 border-b-8 border-green-700 text-white rounded-3xl p-8 flex flex-col items-center gap-4 group"
+                        >
+                            <div className="text-6xl group-hover:animate-bounce">🎮</div>
+                            <span className="text-4xl font-bold">學生端</span>
+                            <span className="text-green-100 font-bold bg-green-800/30 px-4 py-1 rounded-full">開始闖關</span>
+                        </button>
+                        
+                        <button 
+                            onClick={() => setView('teacher')}
+                            className="btn-game flex-1 bg-purple-500 border-b-8 border-purple-700 text-white rounded-3xl p-8 flex flex-col items-center gap-4 group"
+                        >
+                            <div className="text-6xl group-hover:scale-110 transition-transform">👨‍🏫</div>
+                            <span className="text-4xl font-bold">老師端</span>
+                            <span className="text-purple-100 font-bold bg-purple-800/30 px-4 py-1 rounded-full">管理與分析</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function StudentLogin({ onLogin, setView }) {
+            const [name, setName] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (name.trim()) {
+                    onLogin(name.trim());
+                }
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[70vh]">
+                    <div className="bg-white p-10 rounded-3xl shadow-2xl w-full max-w-md text-center border-4 border-blue-200">
+                        <div className="text-6xl mb-6">🍄</div>
+                        <h2 className="text-3xl font-black text-slate-800 mb-8">歡迎來挑戰乘法闖關！</h2>
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                            <div className="text-left">
+                                <label className="block text-slate-600 font-bold mb-2 text-lg">【請輸入你的姓名】</label>
+                                <input 
+                                    type="text" 
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full p-4 text-2xl border-4 border-slate-200 rounded-xl focus:border-blue-500 focus:outline-none font-bold text-center"
+                                    placeholder="例如：林小明"
+                                    autoFocus
+                                />
+                            </div>
+                            <button 
+                                type="submit" 
+                                disabled={!name.trim()}
+                                className={`btn-game p-4 rounded-2xl text-2xl font-bold text-white transition-colors ${name.trim() ? 'bg-blue-500 border-b-6 border-blue-700 hover:bg-blue-400' : 'bg-slate-300 border-slate-400 cursor-not-allowed'}`}
+                            >
+                                開始闖關 🚀
+                            </button>
+                        </form>
+                        <button onClick={() => setView('home')} className="mt-6 text-slate-400 font-bold hover:text-slate-600 underline">
+                            返回首頁
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function StudentHub({ user, setView, setGameMode }) {
+            if (!user) return null;
+
+            return (
+                <div className="max-w-3xl mx-auto flex flex-col gap-8">
+                    {/* Header Profile */}
+                    <div className="bg-white rounded-3xl p-6 shadow-lg border-4 border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                            <h2 className="text-3xl font-black text-slate-800">{user.name}，你好！</h2>
+                            <button onClick={() => setView('student-login')} className="text-sm text-blue-500 font-bold hover:underline mt-1">
+                                🔄 重新輸入姓名
+                            </button>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-700 px-4 py-2 rounded-2xl font-bold flex items-center gap-2 text-xl">
+                                <span>⭐</span> {user.stars}
+                            </div>
+                            <div className="bg-orange-100 border-2 border-orange-400 text-orange-700 px-4 py-2 rounded-2xl font-bold flex items-center gap-2 text-xl">
+                                <span>🪙</span> {user.coins}
+                            </div>
+                            <div className="bg-blue-100 border-2 border-blue-400 text-blue-700 px-4 py-2 rounded-2xl font-bold flex items-center gap-2 text-xl">
+                                <span>🏆</span> {user.basicCompleted + user.advCompleted}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Level Selection */}
+                    <div className="grid md:grid-cols-2 gap-6">
+                        <button 
+                            onClick={() => { setGameMode('basic'); setView('map'); }}
+                            className="btn-game bg-sky-400 border-b-8 border-sky-600 rounded-3xl p-8 flex flex-col items-center gap-4 relative overflow-hidden group"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-20 text-8xl">🍄</div>
+                            <div className="text-6xl z-10 group-hover:animate-bounce">🍄</div>
+                            <h3 className="text-4xl font-black text-white z-10">基礎冒險</h3>
+                            <div className="bg-sky-700/30 px-4 py-2 rounded-full text-white font-bold z-10">
+                                簡單進位 / 位置練習
+                            </div>
+                            <div className="w-full bg-black/20 h-4 rounded-full mt-2 overflow-hidden z-10">
+                                <div className="bg-yellow-400 h-full rounded-full" style={{width: `${(user.basicCompleted/6)*100}%`}}></div>
+                            </div>
+                            <span className="text-sky-100 font-bold z-10">{user.basicCompleted} / 6 關卡</span>
+                        </button>
+
+                        <button 
+                            onClick={() => { setGameMode('adv'); setView('map'); }}
+                            className="btn-game bg-rose-400 border-b-8 border-rose-600 rounded-3xl p-8 flex flex-col items-center gap-4 relative overflow-hidden group"
+                        >
+                            <div className="absolute top-0 right-0 p-4 opacity-20 text-8xl">⭐</div>
+                            <div className="text-6xl z-10 group-hover:scale-110 transition-transform">⭐</div>
+                            <h3 className="text-4xl font-black text-white z-10">進階挑戰</h3>
+                            <div className="bg-rose-700/30 px-4 py-2 rounded-full text-white font-bold z-10">
+                                多次進位 / 完整直式
+                            </div>
+                            <div className="w-full bg-black/20 h-4 rounded-full mt-2 overflow-hidden z-10">
+                                <div className="bg-yellow-400 h-full rounded-full" style={{width: `${(user.advCompleted/6)*100}%`}}></div>
+                            </div>
+                            <span className="text-rose-100 font-bold z-10">{user.advCompleted} / 6 關卡</span>
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function MapView({ user, mode, setView, setCurrentQuestionIdx }) {
+            const isBasic = mode === 'basic';
+            const questions = isBasic ? BASIC_QUESTIONS : ADV_QUESTIONS;
+            const completedList = isBasic ? user.completedLevels.basic : user.completedLevels.adv;
+            const isAllCompleted = completedList.length === 6;
+
+            const handleNodeClick = (idx) => {
+                setCurrentQuestionIdx(idx);
+                setView('animation');
+            };
+
+            // Calculate map layout (simple S-shape or line)
+            return (
+                <div className="max-w-4xl mx-auto flex flex-col items-center relative">
+                    <div className="w-full flex justify-between items-center mb-6 bg-white p-4 rounded-2xl shadow-sm border-2 border-slate-200">
+                        <button onClick={() => setView('student-hub')} className="text-xl font-bold text-slate-600 hover:text-blue-500">
+                            <i className="fa-solid fa-arrow-left mr-2"></i>回首頁
+                        </button>
+                        <h2 className="text-3xl font-black text-slate-800">
+                            {isBasic ? '🍄 基礎冒險地圖' : '⭐ 進階挑戰地圖'}
+                        </h2>
+                        <div className="w-24"></div> {/* Spacer */}
+                    </div>
+
+                    <div className="relative w-full max-w-2xl aspect-square bg-[#78C850] rounded-3xl border-8 border-[#5A9A3C] shadow-inner p-8 overflow-hidden">
+                        {/* Map path (SVG) */}
+                        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <path d="M 20,80 Q 20,50 50,50 T 80,20" fill="none" stroke="#D2B48C" strokeWidth="6" strokeLinecap="round" strokeDasharray="2 4" />
+                        </svg>
+
+                        {/* Nodes */}
+                        <div className="relative w-full h-full">
+                            {questions.map((q, idx) => {
+                                const isCompleted = completedList.includes(q.id);
+                                const isNext = completedList.length === idx;
+                                const isLocked = idx > completedList.length;
+                                
+                                // Positions along the path
+                                const positions = [
+                                    { bottom: '10%', left: '10%' },
+                                    { bottom: '25%', left: '30%' },
+                                    { bottom: '45%', left: '50%' },
+                                    { bottom: '65%', left: '70%' },
+                                    { bottom: '75%', left: '45%' },
+                                    { bottom: '85%', left: '20%' },
+                                ];
+                                const pos = positions[idx];
+
+                                return (
+                                    <div 
+                                        key={idx}
+                                        className="absolute transform -translate-x-1/2 translate-y-1/2 flex flex-col items-center gap-2"
+                                        style={{ bottom: pos.bottom, left: pos.left, zIndex: 10 - idx }}
+                                    >
+                                        <button 
+                                            onClick={() => !isLocked && handleNodeClick(idx)}
+                                            disabled={isLocked}
+                                            className={`w-16 h-16 rounded-full border-4 flex items-center justify-center text-2xl font-black shadow-lg transition-transform ${
+                                                isLocked ? 'bg-slate-300 border-slate-400 text-slate-500 cursor-not-allowed opacity-80' : 
+                                                isNext ? 'bg-yellow-400 border-yellow-600 text-yellow-900 animate-bounce scale-110 cursor-pointer' : 
+                                                'bg-green-400 border-green-600 text-green-900 hover:scale-105 cursor-pointer btn-game'
+                                            }`}
+                                        >
+                                            {isCompleted ? '⭐' : (idx + 1)}
+                                        </button>
+                                        {isNext && (
+                                            <div className="text-3xl animate-walk mt-[-20px] pointer-events-none">
+                                                👦
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                            
+                            {/* Castle */}
+                            <div className="absolute top-[5%] left-[80%] transform -translate-x-1/2">
+                                <div className={`text-6xl transition-all duration-1000 ${isAllCompleted ? 'scale-125 drop-shadow-[0_0_15px_yellow]' : 'grayscale opacity-80'}`}>
+                                    🏰
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Victory Banner */}
+                    {isAllCompleted && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-3xl z-50 backdrop-blur-sm">
+                            <div className="bg-white p-8 rounded-3xl text-center max-w-sm w-full shadow-2xl border-4 border-yellow-400 animate-jump">
+                                <div className="text-8xl mb-4 animate-bounce">🏰</div>
+                                <h2 className="text-4xl font-black text-slate-800 mb-2">全部闖關成功！</h2>
+                                <p className="text-xl text-slate-600 font-bold mb-6">太棒了！你完成所有挑戰！</p>
+                                <div className="bg-yellow-100 text-yellow-800 font-black text-2xl py-3 px-6 rounded-full mb-6 inline-block">
+                                    獲得稱號：{isBasic ? '乘法小勇士' : '直式乘法高手'}
+                                </div>
+                                <button onClick={() => setView('student-hub')} className="btn-game w-full bg-blue-500 border-b-6 border-blue-700 text-white font-bold py-4 rounded-2xl text-xl">
+                                    回首頁
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function AnimationView({ mode, idx, onComplete }) {
+            const question = (mode === 'basic' ? BASIC_QUESTIONS : ADV_QUESTIONS)[idx];
+            
+            useEffect(() => {
+                const timer = setTimeout(() => {
+                    onComplete();
+                }, 3500); // Animation duration
+                return () => clearTimeout(timer);
+            }, [onComplete]);
+
+            return (
+                <div className="fixed inset-0 bg-sky-300 z-50 flex flex-col items-center justify-center overflow-hidden">
+                    {/* Clouds */}
+                    <div className="absolute top-10 left-10 text-6xl text-white opacity-80 animate-[pulse_4s_ease-in-out_infinite]">☁️</div>
+                    <div className="absolute top-20 right-20 text-5xl text-white opacity-80 animate-[pulse_3s_ease-in-out_infinite]">☁️</div>
+                    
+                    <h2 className="absolute top-1/4 text-5xl font-black text-white drop-shadow-md">
+                        第 {idx + 1} 關！
+                    </h2>
+                    <h3 className="absolute top-1/3 mt-4 text-3xl font-bold text-yellow-100 drop-shadow-sm">
+                        準備挑戰！
+                    </h3>
+
+                    <div className="relative h-64 w-full max-w-md flex flex-col items-center justify-end mt-20">
+                        {/* Block */}
+                        <div className="absolute top-0 w-20 h-20 question-block flex items-center justify-center text-4xl font-black text-yellow-800 rounded-lg shadow-lg z-20 animate-block-bounce" style={{animationDelay: '1.2s'}}>
+                            ?
+                        </div>
+                        
+                        {/* Dropped Question */}
+                        <div className="absolute top-0 bg-white px-6 py-2 rounded-full border-4 border-slate-800 text-3xl font-black z-10 animate-item-drop shadow-xl">
+                            {question.n1} × {question.n2}
+                        </div>
+
+                        {/* Character */}
+                        <div className="text-8xl z-30 animate-jump" style={{animationDelay: '1s'}}>
+                            👦
+                        </div>
+                        
+                        {/* Ground */}
+                        <div className="absolute bottom-[-20px] w-[150%] h-10 bg-green-500 border-t-8 border-green-700 rounded-t-[50%] z-0"></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MathGameView({ user, mode, idx, updateUserData, onFinish }) {
+            const question = (mode === 'basic' ? BASIC_QUESTIONS : ADV_QUESTIONS)[idx];
+            const n1 = question.n1; 
+            const n2 = question.n2; 
+            
+            const t0 = n1 % 10;
+            const t1 = Math.floor(n1 / 10);
+            const b0 = n2 % 10;
+            const b1 = Math.floor(n2 / 10);
+
+            const p0_raw = t0 * b0;
+            const p0 = p0_raw % 10;
+            const c1 = Math.floor(p0_raw / 10); 
+            
+            const p1_raw = (t1 * b0) + c1;
+            const p1 = p1_raw % 10;
+            const c2 = Math.floor(p1_raw / 10); 
+            
+            const p2_raw = t0 * b1;
+            const p2 = p2_raw % 10;
+            const c3 = Math.floor(p2_raw / 10); 
+            
+            const p3_raw = (t1 * b1) + c3;
+            const p3 = p3_raw % 10;
+            const c4 = Math.floor(p3_raw / 10); 
+            
+            const total = n1 * n2;
+
+            const [step, setStep] = useState(0); 
+            const [gridState, setGridState] = useState({}); 
+            const [focusCell, setFocusCell] = useState("2,4"); // 更新為嚴格5欄位座標(col 0~4)
+            
+            const expectedSequence = useRef([]);
+            const [isAdditionPhase, setIsAdditionPhase] = useState(false);
+            const [additionSoundPlayed, setAdditionSoundPlayed] = useState(false);
+
+            useEffect(() => {
+                const seq = [];
+                // R2: Ones mult
+                seq.push({ type: 'input', row: 2, col: 4, val: p0, carryHand: c1, hl: ['0,4', '1,4'], hint: '先從下面的個位開始相乘。' });
+                seq.push({ type: 'input', row: 2, col: 3, val: p1, carryHand: c2, hl: ['0,3', '1,4'], hint: '換乘十位。記得加上進位。' });
+                if (c2 > 0) seq.push({ type: 'input', row: 2, col: 2, val: c2, carryHand: 0, hl: [], hint: '寫下最後的進位。' });
+                
+                // R3: Positioning
+                seq.push({ type: 'position', row: 3, col: 3, carryHand: 0, hl: ['1,3'], hint: '現在換十位乘，要從哪一格開始呢？' });
+                
+                // R3: Tens mult
+                seq.push({ type: 'input', row: 3, col: 3, val: p2, carryHand: c3, hl: ['0,4', '1,3'], hint: '十位乘以個位。' });
+                seq.push({ type: 'input', row: 3, col: 2, val: p3, carryHand: c4, hl: ['0,3', '1,3'], hint: '十位乘以十位。記得加上進位。' });
+                if (c4 > 0) seq.push({ type: 'input', row: 3, col: 1, val: c4, carryHand: 0, hl: [], hint: '寫下最後的進位。' });
+                
+                // Addition Phase
+                const s0 = total % 10;
+                const s1 = Math.floor(total / 10) % 10;
+                const s2 = Math.floor(total / 100) % 10;
+                const s3 = Math.floor(total / 1000);
+                
+                seq.push({ type: 'input', row: 4, col: 4, val: s0, carryHand: 0, hl: ['2,4'], hint: '將兩排加起來。' });
+                seq.push({ type: 'input', row: 4, col: 3, val: s1, carryHand: 0, hl: ['2,3', '3,3'], hint: '相加時別忘了進位。' });
+                seq.push({ type: 'input', row: 4, col: 2, val: s2, carryHand: 0, hl: ['2,2', '3,2'], hint: '繼續相加。' });
+                if (s3 > 0 || (c2>0 && c4>0)) seq.push({ type: 'input', row: 4, col: 1, val: s3, carryHand: 0, hl: ['2,1', '3,1'], hint: '寫下最後的數字。' });
+                
+                seq.push({ type: 'done' });
+                
+                expectedSequence.current = seq;
+                setFocusCell(`${seq[0].row},${seq[0].col}`);
+                setAdditionSoundPlayed(false);
+            }, [n1, n2, idx]);
+
+            const [errorMsg, setErrorMsg] = useState("");
+            const [errorType, setErrorType] = useState(""); 
+            const [showSuccessAnim, setShowSuccessAnim] = useState(false);
+            const [hintLevel, setHintLevel] = useState(0);
+
+            const currAction = expectedSequence.current[step];
+
+            // 檢查是否進入加法階段
+            useEffect(() => {
+                const addIndex = expectedSequence.current.findIndex(a => a.row === 4);
+                if (addIndex !== -1 && step >= addIndex) {
+                    setIsAdditionPhase(true);
+                    if (!additionSoundPlayed) {
+                        SoundManager.play('phase');
+                        setAdditionSoundPlayed(true);
+                    }
+                } else {
+                    setIsAdditionPhase(false);
+                }
+            }, [step, additionSoundPlayed]);
+
+            const handleCellClick = (r, c) => {
+                if (showSuccessAnim) return;
+                
+                if (currAction && currAction.type === 'position') {
+                    if (r === currAction.row && c === currAction.col) {
+                        SoundManager.play('correct');
+                        setStep(s => s + 1);
+                        setFocusCell(`${expectedSequence.current[step + 1].row},${expectedSequence.current[step + 1].col}`);
+                        setErrorMsg("答對了！換十位往左一格！");
+                        setErrorType("success");
+                        setTimeout(() => setErrorMsg(""), 2000);
+                        setHintLevel(0);
+                    } else {
+                        SoundManager.play('wrong');
+                        setErrorMsg("現在乘的是十位，要往左一格開始喔！");
+                        setErrorType(`err-${Date.now()}`); 
+                        updateUserData(u => {
+                            const errs = {...u.errors, position: u.errors.position + 1, shift: (r===3 && c===4) ? u.errors.shift + 1 : u.errors.shift};
+                            return {...u, errors: errs};
+                        });
+                    }
+                } else {
+                    if (`${r},${c}` !== focusCell && !gridState[`${r},${c}`]) {
+                        setErrorMsg("請先完成目前發亮的格子喔！");
+                    }
+                }
+            };
+
+            const handleNumpadInput = (num) => {
+                if (showSuccessAnim || (currAction && currAction.type === 'position')) return;
+
+                if (num === 'DEL') {
+                    setErrorMsg("");
+                    return;
+                }
+
+                if (currAction && currAction.type === 'input') {
+                    if (num === currAction.val) {
+                        SoundManager.play('correct');
+                        setGridState(prev => ({...prev, [focusCell]: num}));
+                        setErrorMsg("");
+                        setErrorType("");
+                        setHintLevel(0);
+                        
+                        const nextStep = step + 1;
+                        const nextAction = expectedSequence.current[nextStep];
+                        
+                        if (nextAction.type === 'done') {
+                            handleVictory();
+                        } else {
+                            setStep(nextStep);
+                            if (nextAction.type === 'input' || nextAction.type === 'position') {
+                                setFocusCell(`${nextAction.row},${nextAction.col}`);
+                            }
+                        }
+                    } else {
+                        SoundManager.play('wrong');
+                        let msg = "再算一次看看！";
+                        
+                        const prevAction = expectedSequence.current[step-1];
+                        if (prevAction && prevAction.carryHand > 0) {
+                            const hlCells = currAction.hl;
+                            if (hlCells.length === 2 && hlCells[0].startsWith('0') && hlCells[1].startsWith('1')) {
+                                const t_val = parseInt(document.getElementById(`cell-${hlCells[0]}`).innerText) || 0;
+                                const b_val = parseInt(document.getElementById(`cell-${hlCells[1]}`).innerText) || 0;
+                                if ( (t_val * b_val) % 10 === num ) {
+                                    msg = "啊！忘記把手上的進位加上去了！";
+                                    updateUserData(u => ({...u, errors: {...u.errors, carry: u.errors.carry + 1}}));
+                                }
+                            }
+                        }
+                        
+                        if (msg === "再算一次看看！") {
+                            updateUserData(u => ({...u, errors: {...u.errors, calc: u.errors.calc + 1}}));
+                        }
+
+                        setErrorMsg(msg);
+                        setErrorType(`err-${Date.now()}`); 
+                    }
+                }
+            };
+
+            const handleVictory = () => {
+                setShowSuccessAnim(true);
+                SoundManager.play('win');
+                updateUserData(u => {
+                    const newU = { ...u, stars: u.stars + 3, coins: u.coins + 10 };
+                    if (mode === 'basic') {
+                        if (!newU.completedLevels.basic.includes(question.id)) {
+                            newU.completedLevels.basic.push(question.id);
+                            newU.basicCompleted += 1;
+                        }
+                    } else {
+                        if (!newU.completedLevels.adv.includes(question.id)) {
+                            newU.completedLevels.adv.push(question.id);
+                            newU.advCompleted += 1;
+                        }
+                    }
+                    return newU;
+                });
+            };
+
+            const handleHint = () => {
+                setHintLevel(l => Math.min(l + 1, 3));
+                updateUserData(u => ({...u, hintsUsed: u.hintsUsed + 1}));
+            };
+
+            const renderCell = (r, c, isStatic=false, staticVal="") => {
+                const idStr = `${r},${c}`;
+                const isActive = focusCell === idStr && currAction?.type !== 'position';
+                const isPositionTarget = currAction?.type === 'position' && currAction.row === r && currAction.col === c;
+                const isHighlight = hintLevel >= 2 && currAction?.hl?.includes(idStr);
+                const hasError = isActive && errorType.startsWith('err');
+                const isFilled = gridState[idStr] !== undefined;
+                
+                let cellClass = "math-cell ";
+                if (isStatic) {
+                    // 若是靜態字元但沒有值，則只佔位不顯示
+                    cellClass += "text-slate-800 ";
+                } else {
+                    cellClass += "input-cell ";
+                    if (isActive) cellClass += "active ";
+                    if (hasError) cellClass += "error ";
+                    if (isFilled) cellClass += "filled text-blue-700 ";
+                    if (isPositionTarget && hintLevel >= 2) cellClass += "animate-pulse border-4 border-yellow-400 bg-yellow-100 ";
+                    if (isHighlight) cellClass += "bg-yellow-200 border-yellow-500 scale-105 transition-all ";
+                }
+
+                return (
+                    <div 
+                        key={idStr} 
+                        id={`cell-${idStr}`}
+                        className={cellClass}
+                        onClick={() => !isStatic && handleCellClick(r, c)}
+                    >
+                        {isStatic ? staticVal : (gridState[idStr] !== undefined ? gridState[idStr] : '')}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="flex flex-col items-center max-w-lg mx-auto bg-white p-6 rounded-3xl shadow-xl border-4 border-blue-200 relative">
+                    {/* Header */}
+                    <div className="w-full flex justify-between items-center mb-6">
+                        <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-xl font-bold">
+                            第 {idx + 1} 關
+                        </div>
+                        <button onClick={handleHint} className="btn-game bg-yellow-400 border-b-4 border-yellow-600 text-yellow-900 font-bold px-4 py-2 rounded-xl flex items-center gap-2">
+                            <i className="fa-regular fa-lightbulb"></i> 需要提示
+                        </button>
+                    </div>
+
+                    {/* Hint / Error Message Area */}
+                    <div className="h-16 w-full flex items-center justify-center mb-4">
+                        {errorMsg ? (
+                            <div className={`px-6 py-2 rounded-full font-bold text-lg animate-bounce shadow-md ${errorType === 'success' ? 'bg-green-100 text-green-700 border-2 border-green-400' : 'bg-red-100 text-red-700 border-2 border-red-400'}`}>
+                                {errorType !== 'success' && <i className="fa-solid fa-triangle-exclamation mr-2"></i>}
+                                {errorMsg}
+                            </div>
+                        ) : hintLevel > 0 && currAction ? (
+                            <div className="px-6 py-2 rounded-full font-bold text-lg bg-blue-50 text-blue-700 border-2 border-blue-200 shadow-md">
+                                💡 {hintLevel === 1 ? '先從下面的個位開始。' : hintLevel === 2 ? currAction.hint : (
+                                    <span>
+                                        {currAction.hint} (提示：注意發亮的數字)
+                                    </span>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-slate-400 font-bold text-lg">加油！你可以的！</div>
+                        )}
+                    </div>
+
+                    {/* Carry Hand Visual */}
+                    {currAction && currAction.carryHand > 0 && !showSuccessAnim && (
+                        <div className="absolute right-4 top-40 bg-white border-4 border-rose-400 rounded-3xl p-4 shadow-xl animate-bounce z-20 flex flex-col items-center">
+                            <div className="text-sm font-bold text-rose-600 mb-1">進位放在手上</div>
+                            <div className="text-5xl">✌️ <span className="text-4xl font-black text-rose-600">{currAction.carryHand}</span></div>
+                        </div>
+                    )}
+
+                    {/* Main Math Grid: 嚴格採用 5欄位 排列 */}
+                    <div className="bg-slate-50 p-8 rounded-3xl border-2 border-slate-200 mb-8 relative">
+                        {/* R0: 頂部數字 */}
+                        <div className="math-grid mb-2">
+                            {renderCell(0,0,true,"")} {renderCell(0,1,true,"")} {renderCell(0,2,true,"")} {renderCell(0,3,true,t1||"")} {renderCell(0,4,true,t0)}
+                        </div>
+                        {/* R1: 底部數字 */}
+                        <div className="math-grid">
+                            {renderCell(1,0,true,"")} {renderCell(1,1,true,"")} {renderCell(1,2,true,"×")} {renderCell(1,3,true,b1)} {renderCell(1,4,true,b0)}
+                        </div>
+                        
+                        <div className="w-full h-1 bg-slate-800 my-4 rounded-full"></div>
+                        
+                        {/* R2: 個位乘積 */}
+                        <div className="math-grid mb-2">
+                            {renderCell(2,0,true,"")} {renderCell(2,1,true,"")} {renderCell(2,2)} {renderCell(2,3)} {renderCell(2,4)}
+                        </div>
+                        
+                        {/* R3: 十位乘積與加號 */}
+                        <div className="math-grid">
+                            <div className="flex items-center justify-center text-4xl font-black text-slate-700">
+                                {isAdditionPhase ? "+" : ""}
+                            </div>
+                            {renderCell(3,1)} {renderCell(3,2)} {renderCell(3,3)} {renderCell(3,4,true,"")}
+                        </div>
+                        
+                        {/* 進入加法時顯示第二條底線 */}
+                        {isAdditionPhase && (
+                            <div className="w-full h-1 bg-slate-800 my-4 rounded-full"></div>
+                        )}
+                        
+                        {/* R4: 總和 */}
+                        <div className="math-grid">
+                            {renderCell(4,0,true,"")} {renderCell(4,1)} {renderCell(4,2)} {renderCell(4,3)} {renderCell(4,4)}
+                        </div>
+                    </div>
+
+                    {/* Custom Numpad */}
+                    {!showSuccessAnim && (
+                        <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
+                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                <button 
+                                    key={num}
+                                    onClick={() => handleNumpadInput(num)}
+                                    className="btn-game bg-white border-b-4 border-slate-300 text-3xl font-black text-slate-700 py-4 rounded-2xl shadow-sm hover:bg-slate-50 active:border-b-0"
+                                >
+                                    {num}
+                                </button>
+                            ))}
+                            <button 
+                                onClick={() => handleNumpadInput('DEL')}
+                                className="btn-game bg-rose-100 border-b-4 border-rose-300 text-rose-600 font-black py-4 rounded-2xl shadow-sm hover:bg-rose-200 text-xl"
+                            >
+                                刪除
+                            </button>
+                            <button 
+                                onClick={() => handleNumpadInput(0)}
+                                className="btn-game bg-white border-b-4 border-slate-300 text-3xl font-black text-slate-700 py-4 rounded-2xl shadow-sm hover:bg-slate-50"
+                            >
+                                0
+                            </button>
+                            <div className="bg-transparent"></div>
+                        </div>
+                    )}
+
+                    {/* Success Overlay */}
+                    {showSuccessAnim && (
+                        <div className="absolute inset-0 bg-white/90 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center z-50">
+                            <div className="text-6xl animate-bounce mb-4">🌟</div>
+                            <h2 className="text-4xl font-black text-green-600 mb-2">過關！</h2>
+                            <p className="text-xl font-bold text-slate-600 mb-8">你完成第 {idx + 1} 關！</p>
+                            
+                            <div className="flex gap-4">
+                                <button onClick={() => {
+                                    setStep(0); setGridState({}); setFocusCell("2,4"); setShowSuccessAnim(false);
+                                }} className="btn-game px-6 py-3 bg-slate-200 border-b-4 border-slate-400 rounded-xl font-bold text-slate-700">
+                                    再玩一次
+                                </button>
+                                <button onClick={onFinish} className="btn-game px-6 py-3 bg-blue-500 border-b-4 border-blue-700 rounded-xl font-bold text-white shadow-lg">
+                                    回關卡地圖 🗺️
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function TeacherView({ data, setStudentsData }) {
+            const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, qr
+            const [selectedStudent, setSelectedStudent] = useState(null);
+            const [qrInputUrl, setQrInputUrl] = useState(window.location.href);
+
+            // Calculate overall errors
+            const totalErrors = data.reduce((acc, curr) => {
+                acc.calc += curr.errors.calc;
+                acc.carry += curr.errors.carry;
+                acc.position += curr.errors.position;
+                acc.shift += curr.errors.shift;
+                return acc;
+            }, { calc: 0, carry: 0, position: 0, shift: 0 });
+
+            const sortedErrors = Object.entries(totalErrors).sort((a,b) => b[1] - a[1]);
+            const errorLabels = {
+                calc: "基本計算錯誤",
+                carry: "忘記進位/進位錯誤",
+                position: "直式位置點選錯誤",
+                shift: "十位未往左一格"
+            };
+
+            const clearAllData = () => {
+                // Not using confirm() as per constraints. Using a custom simple UI state would be better, 
+                // but since no prompt constraints strictly forbid standard HTML inputs besides alert/confirm,
+                // Wait, prompt says: "Do not use alert() and confirm() under any circumstances."
+                // I must implement a custom modal if I want to clear.
+                // For simplicity in this single file, I'll add a 'confirming' state.
+                setConfirmClear(true);
+            };
+            const [confirmClear, setConfirmClear] = useState(false);
+
+            return (
+                <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl overflow-hidden min-h-[80vh] flex flex-col">
+                    {/* Header */}
+                    <div className="bg-purple-600 p-6 text-white flex justify-between items-center">
+                        <h2 className="text-3xl font-black flex items-center gap-3">
+                            <i className="fa-solid fa-chalkboard-user"></i> 老師管理後台
+                        </h2>
+                        <div className="flex bg-purple-800 rounded-xl p-1">
+                            <button 
+                                onClick={() => setActiveTab('dashboard')}
+                                className={`px-6 py-2 rounded-lg font-bold transition-colors ${activeTab === 'dashboard' ? 'bg-white text-purple-800 shadow-sm' : 'text-purple-200 hover:text-white'}`}
+                            >
+                                📊 學習紀錄與分析
+                            </button>
+                            <button 
+                                onClick={() => setActiveTab('qr')}
+                                className={`px-6 py-2 rounded-lg font-bold transition-colors ${activeTab === 'qr' ? 'bg-white text-purple-800 shadow-sm' : 'text-purple-200 hover:text-white'}`}
+                            >
+                                📱 學生 QR Code
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="p-8 flex-1 bg-slate-50">
+                        {activeTab === 'dashboard' && (
+                            <div className="flex flex-col gap-8">
+                                {/* Error Analysis Panel */}
+                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-6">
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                            <i className="fa-solid fa-chart-pie text-purple-500"></i> 全班最常出錯的地方
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {sortedErrors.map(([key, val], idx) => (
+                                                <div key={key} className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-white" 
+                                                         style={{backgroundColor: idx===0 ? '#F59E0B' : idx===1 ? '#94A3B8' : idx===2 ? '#B45309' : '#CBD5E1'}}>
+                                                        {idx + 1}
+                                                    </div>
+                                                    <div className="flex-1 font-bold text-slate-700">{errorLabels[key]}</div>
+                                                    <div className="bg-red-100 text-red-700 px-3 py-1 rounded-full font-bold text-sm">
+                                                        {val} 次
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {totalErrors.calc === 0 && totalErrors.carry === 0 && <div className="text-slate-400">目前尚無錯誤紀錄。</div>}
+                                        </div>
+                                    </div>
+                                    <div className="w-px bg-slate-200 hidden md:block"></div>
+                                    <div className="flex-1">
+                                        <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                                            <i className="fa-solid fa-users text-blue-500"></i> 學生學習紀錄表
+                                        </h3>
+                                        {/* Table */}
+                                        <div className="overflow-x-auto rounded-xl border border-slate-200">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="bg-slate-100 text-slate-600 text-sm">
+                                                        <th className="p-3 font-bold">姓名</th>
+                                                        <th className="p-3 font-bold">基礎</th>
+                                                        <th className="p-3 font-bold">進階</th>
+                                                        <th className="p-3 font-bold">提示</th>
+                                                        <th className="p-3 font-bold">錯誤總計</th>
+                                                        <th className="p-3 font-bold text-center">操作</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data.length === 0 ? (
+                                                        <tr><td colSpan="6" className="p-4 text-center text-slate-400">尚無學生紀錄</td></tr>
+                                                    ) : data.map((student, i) => {
+                                                        const errSum = student.errors.calc + student.errors.carry + student.errors.position + student.errors.shift;
+                                                        return (
+                                                            <tr key={i} className="border-t border-slate-100 hover:bg-blue-50 transition-colors">
+                                                                <td className="p-3 font-bold text-slate-800">{student.name}</td>
+                                                                <td className="p-3 text-slate-600">{student.basicCompleted}/6</td>
+                                                                <td className="p-3 text-slate-600">{student.advCompleted}/6</td>
+                                                                <td className="p-3 text-slate-600">{student.hintsUsed}</td>
+                                                                <td className="p-3">
+                                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${errSum > 10 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                                        {errSum}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3 text-center">
+                                                                    <button 
+                                                                        onClick={() => setSelectedStudent(student)}
+                                                                        className="text-blue-500 hover:text-blue-700 font-bold text-sm bg-blue-50 hover:bg-blue-100 px-3 py-1 rounded"
+                                                                    >
+                                                                        詳細分析
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <div className="mt-4 flex justify-end">
+                                            {!confirmClear ? (
+                                                <button onClick={clearAllData} className="text-red-500 hover:text-red-700 text-sm font-bold flex items-center gap-1">
+                                                    <i className="fa-solid fa-trash"></i> 清除全部紀錄
+                                                </button>
+                                            ) : (
+                                                <div className="flex items-center gap-2 bg-red-50 p-2 rounded-lg border border-red-200">
+                                                    <span className="text-red-700 text-sm font-bold">確定要刪除所有資料嗎？</span>
+                                                    <button onClick={() => {setStudentsData([]); setConfirmClear(false);}} className="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold">確定</button>
+                                                    <button onClick={() => setConfirmClear(false)} className="bg-slate-300 text-slate-700 px-3 py-1 rounded text-sm font-bold">取消</button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Detail Modal (Inline) */}
+                                {selectedStudent && (
+                                    <div className="bg-blue-50 p-6 rounded-2xl border-2 border-blue-200 relative">
+                                        <button 
+                                            onClick={() => setSelectedStudent(null)}
+                                            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+                                        >
+                                            <i className="fa-solid fa-xmark text-xl"></i>
+                                        </button>
+                                        <h3 className="text-2xl font-black text-blue-900 mb-4">{selectedStudent.name} 的學習分析</h3>
+                                        <div className="grid md:grid-cols-3 gap-6">
+                                            <div className="bg-white p-4 rounded-xl shadow-sm">
+                                                <div className="text-slate-500 font-bold mb-1">闖關進度</div>
+                                                <div className="text-lg">基礎冒險：<span className="font-black text-blue-600">{selectedStudent.basicCompleted} / 6</span></div>
+                                                <div className="text-lg">進階挑戰：<span className="font-black text-rose-600">{selectedStudent.advCompleted} / 6</span></div>
+                                            </div>
+                                            <div className="bg-white p-4 rounded-xl shadow-sm md:col-span-2">
+                                                <div className="text-slate-500 font-bold mb-1">常見錯誤分析</div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="text-sm">進位錯誤：<span className="font-bold text-red-500">{selectedStudent.errors.carry} 次</span></div>
+                                                    <div className="text-sm">第二排定位：<span className="font-bold text-red-500">{selectedStudent.errors.shift} 次</span></div>
+                                                    <div className="text-sm">計算錯誤：<span className="font-bold text-red-500">{selectedStudent.errors.calc} 次</span></div>
+                                                    <div className="text-sm">格子點選：<span className="font-bold text-red-500">{selectedStudent.errors.position} 次</span></div>
+                                                </div>
+                                                <div className="mt-3 text-sm text-blue-700 font-bold bg-blue-50 p-2 rounded">
+                                                    💡 教學建議：
+                                                    {selectedStudent.errors.carry > selectedStudent.errors.shift ? " 建議加強『進位放手上』的視覺提醒練習。" : 
+                                                     selectedStudent.errors.shift > 0 ? " 建議加強第二排『十位往左一格』的空間概念。" : " 表現良好，繼續保持！"}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {activeTab === 'qr' && (
+                            <div className="flex flex-col items-center justify-center py-10">
+                                <h3 className="text-2xl font-black text-slate-800 mb-2">學生練習入口</h3>
+                                <p className="text-slate-500 mb-6 font-bold">請讓學生使用平板掃描此 QR Code 進入遊戲</p>
+                                
+                                <div className="mb-6 w-full max-w-md flex flex-col gap-2">
+                                    <label className="text-sm font-bold text-slate-600">遊戲網址 (若需更換可自行修改)：</label>
+                                    <input 
+                                        type="text" 
+                                        value={qrInputUrl} 
+                                        onChange={(e) => setQrInputUrl(e.target.value)}
+                                        placeholder="輸入要產生 QR Code 的網址"
+                                        className="w-full p-3 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:outline-none text-slate-700 font-bold"
+                                    />
+                                </div>
+                                
+                                <div className="bg-white p-6 rounded-3xl shadow-xl border-4 border-purple-200 mb-8 flex flex-col items-center transition-all">
+                                    {qrInputUrl ? (
+                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrInputUrl)}`} alt="Student Login QR" className="rounded-xl border border-slate-100" />
+                                    ) : (
+                                        <div className="w-[250px] h-[250px] flex items-center justify-center bg-slate-100 rounded-xl text-slate-400 font-bold">
+                                            請輸入網址
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                <div className="flex gap-4">
+                                    <button 
+                                        onClick={async () => {
+                                            if (!qrInputUrl) return;
+                                            try {
+                                                const url = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrInputUrl)}`;
+                                                const response = await fetch(url);
+                                                const blob = await response.blob();
+                                                const blobUrl = URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = blobUrl;
+                                                a.download = 'math-game-qr.png';
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                URL.revokeObjectURL(blobUrl);
+                                            } catch (e) {
+                                                // 若因跨域問題無法直接下載，則新開分頁顯示大圖
+                                                window.open(`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qrInputUrl)}`, '_blank');
+                                            }
+                                        }}
+                                        className={`px-6 py-3 font-bold rounded-xl flex items-center gap-2 ${qrInputUrl ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                                    >
+                                        <i className="fa-solid fa-download"></i> 下載圖片
+                                    </button>
+                                    <button onClick={() => window.print()} className="px-6 py-3 bg-slate-800 text-white font-bold rounded-xl hover:bg-slate-700 flex items-center gap-2">
+                                        <i className="fa-solid fa-print"></i> 列印 QR Code
+                                    </button>
+                                </div>
+                                
+                                <div className="mt-12 p-4 bg-yellow-50 border border-yellow-200 rounded-xl max-w-md text-sm text-yellow-800 flex items-start gap-3">
+                                    <i className="fa-solid fa-circle-info mt-1"></i>
+                                    <div>
+                                        <strong>提示：</strong> 掃描後學生不需輸入帳號密碼，只需輸入姓名即可開始。系統會自動以姓名紀錄成績。
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
